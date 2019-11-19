@@ -7,10 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "*"
-colored = "*"
-paw = "*"
+anyhow = "1.0"
+colored = "1.9"
+paw = "1.0"
 rustyline = "5.0"
 serde = { version = "1.0", features = ["derive"] }
-structopt = { version = "*", features = ["paw"] }
-toml = "*"
+structopt = { version = "0.3", features = ["paw"] }
+toml = "0.5"
