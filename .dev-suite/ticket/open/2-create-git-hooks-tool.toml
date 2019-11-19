@@ -1,0 +1,11 @@
+title = 'Create git hooks tool'
+status = 'Open'
+number = 2
+description = '''
+Git hooks are great, but the problem is that it's hard to standardize
+them across a team. This is because they don't travel with the repo for
+security reasons. However, having a way to manage and install them in a
+repo is a good thing to standardizing checks across a team to avoid
+issues that just get caught in CI way later when it would be trivial to
+catch with a script.
+'''
