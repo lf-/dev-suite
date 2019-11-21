@@ -1,0 +1,12 @@
+title = 'Create a find_root function'
+status = 'Open'
+number = 3
+description = '''
+One of the issues with ticket is that it has a bug in init where if it's
+not given the path to the root of a git then it will fail. This is
+frankly frustrating and can be a bit unexpected in behavior. We fixed
+this in the ticket creation with a `find_root` function. This should be
+a more generalized function and be shared amongst future tools as this
+will be a common operation. It shouldn't matter where in a repo you are,
+the tools should just work.
+'''
