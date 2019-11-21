@@ -1,31 +1,14 @@
-use anyhow::{
-  bail,
-  Result,
-};
+use anyhow::{bail, Result};
 use colored::*;
-use rustyline::{
-  error::ReadlineError,
-  Editor,
-};
-use serde::{
-  Deserialize,
-  Serialize,
-};
-use std::{
-  env,
-  fs,
-  path::PathBuf,
-  process,
-  process::Command,
-};
+use rustyline::{error::ReadlineError, Editor};
+use serde::{Deserialize, Serialize};
+use shared::find_root;
+use std::{env, fs, path::PathBuf, process, process::Command};
 
 #[derive(structopt::StructOpt)]
 enum Args {
   /// Initialize the repo to use ticket
-  Init {
-    #[structopt(default_value = ".", parse(from_os_str))]
-    location: PathBuf,
-  },
+  Init,
   New,
   Show {
     id: usize,
@@ -38,7 +21,7 @@ enum Args {
 #[paw::main]
 fn main(args: Args) {
   if let Err(e) = match args {
-    Args::Init { location } => init(location),
+    Args::Init => init(),
     Args::New => new(),
     Args::Show { id } => show(id),
     Args::Close { id } => close(id),
@@ -48,19 +31,11 @@ fn main(args: Args) {
   }
 }
 
-fn init(location: PathBuf) -> Result<()> {
-  if location.join(".git").is_dir() {
-    let root = location.join(".dev-suite").join("ticket");
-    fs::create_dir_all(&root)?;
-    fs::create_dir_all(&root.join("open"))?;
-    fs::create_dir_all(&root.join("closed"))?;
-    Ok(())
-  } else {
-    bail!(
-      "{} is not a valid git repository",
-      location.canonicalize()?.display()
-    )
-  }
+fn init() -> Result<()> {
+  let root = find_root()?.join(".dev-suite").join("ticket");
+  fs::create_dir_all(&root.join("open"))?;
+  fs::create_dir_all(&root.join("closed"))?;
+  Ok(())
 }
 
 fn new() -> Result<()> {
@@ -125,28 +100,8 @@ fn new() -> Result<()> {
   Ok(())
 }
 
-fn find_root() -> Result<PathBuf> {
-  let mut location = env::current_dir()?;
-  let mut found_root = false;
-
-  for loc in location.ancestors() {
-    let loc = loc.join(".dev-suite");
-    if loc.exists() {
-      found_root = true;
-      location = loc.canonicalize()?;
-      break;
-    }
-  }
-
-  if found_root {
-    Ok(location)
-  } else {
-    bail!("Unable to find a dev-suite enabled repo");
-  }
-}
-
 fn ticket_root() -> Result<PathBuf> {
-  Ok(find_root()?.join("ticket"))
+  Ok(find_root()?.join(".dev-suite").join("ticket"))
 }
 
 fn show(id: usize) -> Result<()> {

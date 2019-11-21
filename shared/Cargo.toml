@@ -1,5 +1,5 @@
 [package]
-name = "ticket"
+name = "shared"
 version = "0.1.0"
 authors = ["Michael Gattozzi <mgattozzi@gmail.com>"]
 edition = "2018"
@@ -8,10 +8,3 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
-colored = "1.9"
-paw = "1.0"
-rustyline = "5.0"
-serde = { version = "1.0", features = ["derive"] }
-shared = { path = "../shared" }
-structopt = { version = "0.3", features = ["paw"] }
-toml = "0.5"

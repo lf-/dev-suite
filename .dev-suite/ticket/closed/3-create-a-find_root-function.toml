@@ -1,5 +1,5 @@
 title = 'Create a find_root function'
-status = 'Open'
+status = 'Closed'
 number = 3
 description = '''
 One of the issues with ticket is that it has a bug in init where if it's
