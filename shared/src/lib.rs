@@ -1,5 +1,11 @@
-use anyhow::{bail, Result};
-use std::{env, path::PathBuf};
+use anyhow::{
+  bail,
+  Result,
+};
+use std::{
+  env,
+  path::PathBuf,
+};
 
 pub fn find_root() -> Result<PathBuf> {
   let mut location = env::current_dir()?;

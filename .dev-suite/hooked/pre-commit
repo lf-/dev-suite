@@ -1,1 +1,5 @@
 #! /bin/bash
+cargo build --all
+cargo test --all
+cargo +nightly fmt --all -- --check
+cargo clippy --all --all-targets

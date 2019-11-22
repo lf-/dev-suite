@@ -1,9 +1,24 @@
-use anyhow::{bail, Result};
+use anyhow::{
+  bail,
+  Result,
+};
 use colored::*;
-use rustyline::{error::ReadlineError, Editor};
-use serde::{Deserialize, Serialize};
+use rustyline::{
+  error::ReadlineError,
+  Editor,
+};
+use serde::{
+  Deserialize,
+  Serialize,
+};
 use shared::find_root;
-use std::{env, fs, path::PathBuf, process, process::Command};
+use std::{
+  env,
+  fs,
+  path::PathBuf,
+  process,
+  process::Command,
+};
 
 #[derive(structopt::StructOpt)]
 enum Args {
