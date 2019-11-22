@@ -1,5 +1,5 @@
 title = 'Create git hooks tool'
-status = 'Open'
+status = 'Closed'
 number = 2
 description = '''
 Git hooks are great, but the problem is that it's hard to standardize

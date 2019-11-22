@@ -190,6 +190,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hooked"
+version = "0.1.0"
+dependencies = [
+ "anyhow 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "paw 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shared 0.1.0",
+ "structopt 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
