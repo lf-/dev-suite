@@ -197,6 +197,7 @@ dependencies = [
  "paw 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "shared 0.1.0",
  "structopt 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unicode-segmentation 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
