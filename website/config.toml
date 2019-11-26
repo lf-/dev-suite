@@ -1,0 +1,4 @@
+baseURL = "https://dev-suite.mgattozzi.dev/"
+languageCode = "en-us"
+title = "dev-suite"
+theme = "kube"
