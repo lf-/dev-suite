@@ -1,3 +1,7 @@
+mod actions;
+mod tui;
+
+use actions::*;
 use anyhow::{
   bail,
   Result,
@@ -12,17 +16,21 @@ use serde::{
   Deserialize,
   Serialize,
 };
-use shared::find_root;
 use std::{
   env,
   fs,
-  path::PathBuf,
   process,
   process::Command,
 };
 
 #[derive(structopt::StructOpt)]
-enum Args {
+struct Args {
+  #[structopt(subcommand)]
+  cmd: Option<Cmd>,
+}
+
+#[derive(structopt::StructOpt)]
+enum Cmd {
   /// Initialize the repo to use ticket
   Init,
   New,
@@ -40,19 +48,25 @@ fn main(args: Args) {
     env::set_var("RUST_LOG", "info");
   });
   pretty_env_logger::init();
-  if let Err(e) = match args {
-    Args::Init => init(),
-    Args::New => new(),
-    Args::Show { id } => show(id),
-    Args::Close { id } => close(id),
-  } {
+
+  if let Some(cmd) = args.cmd {
+    if let Err(e) = match cmd {
+      Cmd::Init => init(),
+      Cmd::New => new(),
+      Cmd::Show { id } => show(id),
+      Cmd::Close { id } => close(id),
+    } {
+      error!("{}", e);
+      std::process::exit(1);
+    }
+  } else if let Err(e) = tui::run() {
     error!("{}", e);
     std::process::exit(1);
   }
 }
 
 fn init() -> Result<()> {
-  let root = find_root()?.join(".dev-suite").join("ticket");
+  let root = ticket_root()?;
   debug!("Creating ticket directory at {}.", root.display());
   debug!("Creating open directory.");
   fs::create_dir_all(&root.join("open"))?;
@@ -139,10 +153,6 @@ fn new() -> Result<()> {
   trace!("Finished writing data to disk.");
 
   Ok(())
-}
-
-fn ticket_root() -> Result<PathBuf> {
-  Ok(find_root()?.join(".dev-suite").join("ticket"))
 }
 
 fn show(id: usize) -> Result<()> {
@@ -236,7 +246,7 @@ fn close(id: usize) -> Result<()> {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Ticket {
+pub struct Ticket {
   title: String,
   status: Status,
   number: usize,
@@ -245,7 +255,7 @@ struct Ticket {
 }
 
 #[derive(Serialize, Deserialize)]
-enum Status {
+pub enum Status {
   Open,
   Closed,
 }
