@@ -1,5 +1,5 @@
 title = 'Create a tui for ticket'
-status = 'Open'
+status = 'Closed'
 number = 4
 description = '''
 Currently ticket is all cli driven. The experience isn't the worst, but
