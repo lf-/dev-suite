@@ -216,7 +216,7 @@ pub fn run() -> Result<()> {
         .direction(Direction::Horizontal)
         .vertical_margin(3)
         .constraints(
-          [Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),
+          [Constraint::Percentage(30), Constraint::Percentage(70)].as_ref(),
         )
         .split(size);
 
@@ -283,7 +283,7 @@ pub fn run() -> Result<()> {
 impl<'a> App<'a> {
   fn table(&self, tab: &'a str) -> impl Widget + '_ {
     Table::new(
-      ["Id", "Title", "Assignee"].iter(),
+      ["Id", "Title"].iter(),
       self
         .tickets
         .tickets
@@ -292,15 +292,7 @@ impl<'a> App<'a> {
         .iter()
         .enumerate()
         .map(move |(idx, i)| {
-          let data = vec![
-            i.number.to_string(),
-            i.title.to_string(),
-            i.assignee
-              .as_ref()
-              .cloned()
-              .unwrap_or_else(|| "None".into()),
-          ]
-          .into_iter();
+          let data = vec![i.id.to_string(), i.title.to_string()].into_iter();
           let normal_style = Style::default().fg(Color::Yellow);
           let selected_style =
             Style::default().fg(Color::White).modifier(Modifier::BOLD);
@@ -313,11 +305,7 @@ impl<'a> App<'a> {
     )
     .block(Block::default().title(tab).borders(Borders::ALL))
     .header_style(Style::default().fg(Color::Yellow))
-    .widths(&[
-      Constraint::Percentage(10),
-      Constraint::Percentage(70),
-      Constraint::Percentage(20),
-    ])
+    .widths(&[Constraint::Percentage(30), Constraint::Percentage(70)])
     .style(Style::default().fg(Color::White))
     .column_spacing(1)
   }

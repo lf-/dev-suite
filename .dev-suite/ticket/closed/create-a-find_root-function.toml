@@ -1,6 +1,7 @@
 title = 'Create a find_root function'
 status = 'Closed'
-number = 3
+id = '0f37b780-1553-11ea-8003-000502040903'
+assignees = []
 description = '''
 One of the issues with ticket is that it has a bug in init where if it's
 not given the path to the root of a git then it will fail. This is
@@ -10,3 +11,5 @@ a more generalized function and be shared amongst future tools as this
 will be a common operation. It shouldn't matter where in a repo you are,
 the tools should just work.
 '''
+comments = []
+version = 'V1'

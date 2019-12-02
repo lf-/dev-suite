@@ -6,6 +6,7 @@ use anyhow::{
   bail,
   Result,
 };
+use chrono::prelude::*;
 use colored::*;
 use log::*;
 use rustyline::{
@@ -21,6 +22,15 @@ use std::{
   fs,
   process,
   process::Command,
+  thread,
+  time,
+};
+use uuid::{
+  v1::{
+    Context,
+    Timestamp,
+  },
+  Uuid,
 };
 
 #[derive(structopt::StructOpt)]
@@ -33,13 +43,14 @@ struct Args {
 enum Cmd {
   /// Initialize the repo to use ticket
   Init,
+  /// Update tickets to newer formats
+  Migrate,
+  /// Create a new ticket
   New,
-  Show {
-    id: usize,
-  },
-  Close {
-    id: usize,
-  },
+  /// Show a ticket on the command line
+  Show { id: Uuid },
+  /// Close a ticket on the command line
+  Close { id: Uuid },
 }
 
 #[paw::main]
@@ -53,6 +64,7 @@ fn main(args: Args) {
     if let Err(e) = match cmd {
       Cmd::Init => init(),
       Cmd::New => new(),
+      Cmd::Migrate => migrate(),
       Cmd::Show { id } => show(id),
       Cmd::Close { id } => close(id),
     } {
@@ -81,22 +93,8 @@ fn new() -> Result<()> {
   debug!("Getting ticket root.");
   let ticket_root = ticket_root()?;
   trace!("Got ticket root: {}", ticket_root.display());
-  let open = ticket_root.join("open");
-  let closed = ticket_root.join("closed");
+  let open = open_tickets()?;
   let description = ticket_root.join("description");
-  let mut ticket_num = 1;
-
-  // Fast enough for now but maybe not in the future
-  debug!("Getting number of tickets total.");
-  for entry in fs::read_dir(&open)?.chain(fs::read_dir(&closed)?) {
-    let entry = entry?;
-    let path = entry.path();
-    if path.is_file() {
-      ticket_num += 1;
-    }
-  }
-  debug!("Ticket Total: {}", ticket_num - 1);
-  debug!("Next Ticket ID: {}", ticket_num);
 
   let mut rl = Editor::<()>::new();
   let title = match rl.readline("Title: ") {
@@ -132,16 +130,20 @@ fn new() -> Result<()> {
   let t = Ticket {
     title,
     status: Status::Open,
-    number: ticket_num,
-    assignee: None,
+    id: Uuid::new_v1(
+      Timestamp::from_unix(Context::new(1), Utc::now().timestamp() as u64, 0),
+      &[0, 5, 2, 4, 9, 3],
+    )?,
+    assignees: Vec::new(),
     description: description_contents,
+    comments: Vec::new(),
+    version: Version::V1,
   };
 
   debug!("Converting ticket to toml and writing to disk.");
   fs::write(
     open.join(&format!(
-      "{}-{}.toml",
-      ticket_num,
+      "{}.toml",
       t.title
         .to_lowercase()
         .split_whitespace()
@@ -155,7 +157,7 @@ fn new() -> Result<()> {
   Ok(())
 }
 
-fn show(id: usize) -> Result<()> {
+fn show(id: Uuid) -> Result<()> {
   debug!("Getting ticket root.");
   let ticket_root = ticket_root()?;
   trace!("Ticket root at {}.", ticket_root.display());
@@ -170,33 +172,32 @@ fn show(id: usize) -> Result<()> {
     let path = entry.path();
     trace!("Looking at entry {}.", path.display());
     if path.is_file() {
-      if let Some(file_name) = path.file_name().and_then(|f| f.to_str()) {
-        trace!("Entry is a file.");
-        if file_name.starts_with(&id.to_string()) {
-          trace!("This is the expected entry.");
-          let ticket = toml::from_slice::<Ticket>(&fs::read(&path)?)?;
+      let ticket = toml::from_slice::<Ticket>(&fs::read(&path)?)?;
+      if ticket.id == id {
+        trace!("This is the expected entry.");
+        println!(
+          "{}",
+          format!("{} - {}\n", ticket.id, ticket.title).bold().red()
+        );
+        if !ticket.assignees.is_empty() {
           println!(
-            "{}",
-            format!("{} - {}\n", ticket.number, ticket.title)
-              .bold()
-              .red()
+            "{}{}",
+            "Assignees: ".bold().purple(),
+            ticket.assignees.join(", ")
           );
-          if let Some(a) = ticket.assignee {
-            println!("{}{}", "Assignee: ".bold().purple(), a);
-          }
-
-          print!(
-            "{}{}\n\n{}",
-            "Status: ".bold().purple(),
-            match ticket.status {
-              Status::Open => "Open".bold().green(),
-              Status::Closed => "Closed".bold().red(),
-            },
-            ticket.description
-          );
-          found = true;
-          break;
         }
+
+        print!(
+          "{}{}\n\n{}",
+          "Status: ".bold().purple(),
+          match ticket.status {
+            Status::Open => "Open".bold().green(),
+            Status::Closed => "Closed".bold().red(),
+          },
+          ticket.description
+        );
+        found = true;
+        break;
       }
     }
   }
@@ -207,7 +208,7 @@ fn show(id: usize) -> Result<()> {
   }
 }
 
-fn close(id: usize) -> Result<()> {
+fn close(id: Uuid) -> Result<()> {
   debug!("Getting ticket root.");
   let ticket_root = ticket_root()?;
   trace!("Ticket root at {}.", ticket_root.display());
@@ -221,20 +222,20 @@ fn close(id: usize) -> Result<()> {
     let path = entry.path();
     trace!("Looking at entry {}.", path.display());
     if path.is_file() {
-      if let Some(file_name) = path.file_name().and_then(|f| f.to_str()) {
-        if file_name.starts_with(&id.to_string()) {
-          trace!("The ticket is open and exists.");
-          debug!("Reading in the ticket from disk and setting it to closed.");
-          let mut ticket = toml::from_slice::<Ticket>(&fs::read(&path)?)?;
-          ticket.status = Status::Closed;
-          debug!("Writing ticket to disk in the closed directory.");
-          fs::write(closed.join(file_name), toml::to_string_pretty(&ticket)?)?;
-          debug!("Removing old ticket.");
-          fs::remove_file(&path)?;
-          trace!("Removed the old ticket.");
-          found = true;
-          break;
-        }
+      let mut ticket = toml::from_slice::<Ticket>(&fs::read(&path)?)?;
+      if ticket.id == id {
+        debug!("Ticket found setting it to closed.");
+        ticket.status = Status::Closed;
+        trace!("Writing ticket to disk in the closed directory.");
+        fs::write(
+          closed.join(path.file_name().expect("Path should have a file name")),
+          toml::to_string_pretty(&ticket)?,
+        )?;
+        debug!("Removing old ticket.");
+        fs::remove_file(&path)?;
+        trace!("Removed the old ticket.");
+        found = true;
+        break;
       }
     }
   }
@@ -245,8 +246,70 @@ fn close(id: usize) -> Result<()> {
   }
 }
 
+/// Upgrade from V0 to V1 of the ticket
+fn migrate() -> Result<()> {
+  let ctx = Context::new(1);
+  let tickets = get_all_ticketsv0()?;
+
+  let open_tickets_path = open_tickets()?;
+  let closed_tickets_path = closed_tickets()?;
+
+  for t in tickets.into_iter() {
+    let ticket = Ticket {
+      title: t.title,
+      status: t.status,
+      id: Uuid::new_v1(
+        Timestamp::from_unix(&ctx, Utc::now().timestamp() as u64, 0),
+        &[0, 5, 2, 4, 9, 3],
+      )?,
+      assignees: t.assignee.map(|a| vec![a]).unwrap_or_else(Vec::new),
+      description: t.description,
+      comments: Vec::new(),
+      version: Version::V1,
+    };
+
+    let path = match ticket.status {
+      Status::Open => &open_tickets_path,
+      Status::Closed => &closed_tickets_path,
+    };
+
+    let mut name = ticket
+      .title
+      .split_whitespace()
+      .collect::<Vec<&str>>()
+      .join("-");
+    name.push_str(".toml");
+    name = name.to_lowercase();
+    fs::write(path.join(&name), toml::to_string_pretty(&ticket)?)?;
+    fs::remove_file(path.join(format!("{}-{}", t.number, name)))?;
+    // We need to make sure we get different times for each ticket
+    // Possible future migrations might not have this issue
+    thread::sleep(time::Duration::from_millis(1000));
+  }
+  Ok(())
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Ticket {
+  title: String,
+  status: Status,
+  id: Uuid,
+  assignees: Vec<String>,
+  description: String,
+  comments: Vec<(User, String)>,
+  version: Version,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum Version {
+  V1,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct User(String);
+
+#[derive(Serialize, Deserialize)]
+pub struct TicketV0 {
   title: String,
   status: Status,
   number: usize,

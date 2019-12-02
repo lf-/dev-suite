@@ -1,6 +1,7 @@
 title = 'Create git hooks tool'
 status = 'Closed'
-number = 2
+id = '0e068a80-1553-11ea-8002-000502040903'
+assignees = []
 description = '''
 Git hooks are great, but the problem is that it's hard to standardize
 them across a team. This is because they don't travel with the repo for
@@ -9,3 +10,5 @@ repo is a good thing to standardizing checks across a team to avoid
 issues that just get caught in CI way later when it would be trivial to
 catch with a script.
 '''
+comments = []
+version = 'V1'

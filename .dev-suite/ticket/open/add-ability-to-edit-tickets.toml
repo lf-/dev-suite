@@ -1,9 +1,12 @@
 title = 'Add ability to edit tickets'
 status = 'Open'
-number = 1
+id = '0d6df400-1553-11ea-8001-000502040903'
+assignees = []
 description = '''
 Currently if you want to edit a ticket you need to directly edit it
 inside of the git repo itself. While it works it's hardly ideal. The
 ability to edit tickets by specifiying the id with an accompanying cli
 arg to go with it would be enough to close this.
 '''
+comments = []
+version = 'V1'

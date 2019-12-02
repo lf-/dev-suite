@@ -1,6 +1,7 @@
 title = 'Create a tui for ticket'
 status = 'Closed'
-number = 4
+id = '0fd04e00-1553-11ea-8004-000502040903'
+assignees = []
 description = '''
 Currently ticket is all cli driven. The experience isn't the worst, but
 the end goal has always been to get the user to be able to have a nice
@@ -8,3 +9,5 @@ in terminal experience, almost as if they never left GitHub. A basic
 tui that allows one to read and comment on issues will suffice to close
 this ticket.
 '''
+comments = []
+version = 'V1'
