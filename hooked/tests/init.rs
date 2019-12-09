@@ -33,10 +33,10 @@ const HOOKS: [&str; 18] = [
 #[test]
 fn init() -> Result<(), Box<dyn Error>> {
   let dir = tempdir()?;
-  Repository::init(&dir)?;
+  let _ = Repository::init(&dir)?;
   let mut cmd = Command::cargo_bin("hooked")?;
   env::set_current_dir(&dir)?;
-  cmd.arg("init").assert().success();
+  let _ = cmd.arg("init").assert().success();
   let git = &dir.path().join(".git").join("hooks");
   let dev = &dir.path().join(".dev-suite").join("hooked");
 

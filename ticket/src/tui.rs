@@ -130,8 +130,8 @@ pub struct Config {
 }
 
 impl Default for Config {
-  fn default() -> Config {
-    Config {
+  fn default() -> Self {
+    Self {
       exit_key: Key::Char('q'),
       tick_rate: Duration::from_millis(250),
     }
@@ -139,11 +139,11 @@ impl Default for Config {
 }
 
 impl Events {
-  pub fn new() -> Events {
-    Events::with_config(Config::default())
+  pub fn new() -> Self {
+    Self::with_config(Config::default())
   }
 
-  pub fn with_config(config: Config) -> Events {
+  pub fn with_config(config: Config) -> Self {
     let (tx, rx) = mpsc::channel();
     let input_handle = {
       let tx = tx.clone();
@@ -171,7 +171,7 @@ impl Events {
         }
       })
     };
-    Events {
+    Self {
       rx,
       input_handle,
       tick_handle,
@@ -198,8 +198,8 @@ pub fn run() -> Result<()> {
     tabs: TabsState::new(vec!["Open", "Closed"]),
     tickets: {
       let mut map = BTreeMap::new();
-      map.insert("Open".into(), get_open_tickets()?);
-      map.insert("Closed".into(), get_closed_tickets()?);
+      let _ = map.insert("Open".into(), get_open_tickets()?);
+      let _ = map.insert("Closed".into(), get_closed_tickets()?);
       TicketState::new(map)
     },
   };

@@ -1,3 +1,5 @@
+//! git hook manager tool
+
 #[cfg(windows)]
 use anyhow::bail;
 use anyhow::Result;
@@ -45,9 +47,9 @@ enum Args {
 
 #[paw::main]
 fn main(args: Args) {
-  env::var("RUST_LOG").map(drop).unwrap_or_else(|_| {
-    env::set_var("RUST_LOG", "info");
-  });
+  env::var("RUST_LOG")
+    .ok()
+    .map_or_else(|| env::set_var("RUST_LOG", "info"), drop);
   pretty_env_logger::init();
   if let Err(e) = match args {
     Args::Init => init(),
@@ -74,7 +76,9 @@ fn init() -> Result<()> {
     let git_hook = &git_hooks.join(hook);
     debug!("git_hook path: {}", git_hook.display());
 
-    if !path.exists() {
+    if path.exists() {
+      debug!("git hook {} already exists. Skipping creation.", hook);
+    } else {
       debug!("Creating dev-suite hook.");
       let mut file = fs::File::create(&path)?;
       trace!("File created.");
@@ -86,8 +90,6 @@ fn init() -> Result<()> {
       file.write_all(b"#! /bin/bash")?;
       debug!("Writing data to file.");
       debug!("Created git hook {}.", hook);
-    } else {
-      debug!("git hook {} already exists. Skipping creation.", hook);
     }
     let path = path.canonicalize()?;
 

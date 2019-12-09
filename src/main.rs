@@ -1,3 +1,4 @@
+//! dev-suite cli tool to install and update devsuite and it's tooling
 use anyhow::{
   format_err,
   Result,
@@ -32,9 +33,10 @@ fn main(args: Args) {
   }
 }
 
+/// Initialize a git repo with all the tools wanted for it
 fn init() -> Result<()> {
   // Make sure we're in a valid git repo
-  find_root()?;
+  let _ = find_root()?;
   let checkboxes = &["hooked - Managed git hooks", "ticket - In repo tickets"];
   let defaults = &[true, true];
   let selections = Checkboxes::with_theme(&ColorfulTheme::default())
@@ -61,7 +63,7 @@ fn init() -> Result<()> {
             .map_err(|_| format_err!(
               "It looks like hooked is not on your $PATH. Did you run 'ds install'?"
             ))?;
-          Command::new("hooked").arg("init").spawn()?.wait()?;
+          let _ = Command::new("hooked").arg("init").spawn()?.wait()?;
         }
         Tools::Ticket => {
           which("ticket")
@@ -69,7 +71,7 @@ fn init() -> Result<()> {
             .map_err(|_| format_err!(
               "It looks like ticket is not on your $PATH. Did you run 'ds install'?"
             ))?;
-          Command::new("ticket").arg("init").spawn()?.wait()?;
+          let _ = Command::new("ticket").arg("init").spawn()?.wait()?;
         }
       }
     }
@@ -77,6 +79,7 @@ fn init() -> Result<()> {
   Ok(())
 }
 
+/// Tools available for installation or usage by dev-suite
 enum Tools {
   Hooked,
   Ticket,

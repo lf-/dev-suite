@@ -10,18 +10,21 @@ use log::*;
 use shared::find_root;
 use std::{
   fs,
-  path::PathBuf,
+  path::{
+    Path,
+    PathBuf,
+  },
 };
 
 pub fn get_open_tickets() -> Result<Vec<Ticket>> {
-  get_tickets(open_tickets()?)
+  get_tickets(&open_tickets()?)
 }
 
 pub fn get_closed_tickets() -> Result<Vec<Ticket>> {
-  get_tickets(closed_tickets()?)
+  get_tickets(&closed_tickets()?)
 }
 
-fn get_tickets(path: PathBuf) -> Result<Vec<Ticket>> {
+fn get_tickets(path: &Path) -> Result<Vec<Ticket>> {
   let mut out = Vec::new();
   debug!("Looking for ticket.");
   for entry in fs::read_dir(&path)? {
@@ -63,14 +66,14 @@ pub fn get_all_ticketsv0() -> Result<Vec<TicketV0>> {
   Ok(tickets)
 }
 pub fn get_open_ticketsv0() -> Result<Vec<TicketV0>> {
-  get_ticketsv0(open_tickets()?)
+  get_ticketsv0(&open_tickets()?)
 }
 
 pub fn get_closed_ticketsv0() -> Result<Vec<TicketV0>> {
-  get_ticketsv0(closed_tickets()?)
+  get_ticketsv0(&closed_tickets()?)
 }
 
-fn get_ticketsv0(path: PathBuf) -> Result<Vec<TicketV0>> {
+fn get_ticketsv0(path: &Path) -> Result<Vec<TicketV0>> {
   let mut out = Vec::new();
   debug!("Looking for ticket.");
   for entry in fs::read_dir(&path)? {

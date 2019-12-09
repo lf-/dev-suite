@@ -1,3 +1,6 @@
+//! ticket is a cli tool to create, delete, and manage tickets as part of
+//! repository, rather than a separate service outside the history of the
+//! code.
 mod actions;
 mod tui;
 
@@ -18,6 +21,7 @@ use serde::{
   Serialize,
 };
 use std::{
+  convert::TryInto,
   env,
   fs,
   process,
@@ -55,9 +59,9 @@ enum Cmd {
 
 #[paw::main]
 fn main(args: Args) {
-  env::var("RUST_LOG").map(drop).unwrap_or_else(|_| {
-    env::set_var("RUST_LOG", "info");
-  });
+  env::var("RUST_LOG")
+    .ok()
+    .map_or_else(|| env::set_var("RUST_LOG", "info"), drop);
   pretty_env_logger::init();
 
   if let Some(cmd) = args.cmd {
@@ -116,8 +120,8 @@ fn new() -> Result<()> {
     "Create buffer file for the description at {}.",
     description.display()
   );
-  fs::File::create(&description)?;
-  Command::new(&env::var("EDITOR").unwrap_or_else(|_| "vi".into()))
+  let _ = fs::File::create(&description)?;
+  let _ = Command::new(&env::var("EDITOR").unwrap_or_else(|_| "vi".into()))
     .arg(&description)
     .spawn()?
     .wait()?;
@@ -131,7 +135,11 @@ fn new() -> Result<()> {
     title,
     status: Status::Open,
     id: Uuid::new_v1(
-      Timestamp::from_unix(Context::new(1), Utc::now().timestamp() as u64, 0),
+      Timestamp::from_unix(
+        Context::new(1),
+        Utc::now().timestamp().try_into()?,
+        0,
+      ),
       &[0, 5, 2, 4, 9, 3],
     )?,
     assignees: Vec::new(),
@@ -254,15 +262,15 @@ fn migrate() -> Result<()> {
   let open_tickets_path = open_tickets()?;
   let closed_tickets_path = closed_tickets()?;
 
-  for t in tickets.into_iter() {
+  for t in tickets {
     let ticket = Ticket {
       title: t.title,
       status: t.status,
       id: Uuid::new_v1(
-        Timestamp::from_unix(&ctx, Utc::now().timestamp() as u64, 0),
+        Timestamp::from_unix(&ctx, Utc::now().timestamp().try_into()?, 0),
         &[0, 5, 2, 4, 9, 3],
       )?,
-      assignees: t.assignee.map(|a| vec![a]).unwrap_or_else(Vec::new),
+      assignees: t.assignee.map_or_else(Vec::new, |a| vec![a]),
       description: t.description,
       comments: Vec::new(),
       version: Version::V1,
@@ -289,7 +297,9 @@ fn migrate() -> Result<()> {
   Ok(())
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
+/// The fundamental type this tool revolves around. The ticket represents
+/// everything about an issue or future plan for the code base.
 pub struct Ticket {
   title: String,
   status: Status,
@@ -300,15 +310,21 @@ pub struct Ticket {
   version: Version,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
+/// Enum representing what version of the ticket it is and the assumptions that
+/// can be made about it
 pub enum Version {
+  /// The first version
   V1,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
+/// Newtype to represent a User or maintainer
 pub struct User(String);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
+/// Original version of the tickets on disk. This exists for historical reasons
+/// but is deprecated and likely to be removed.
 pub struct TicketV0 {
   title: String,
   status: Status,
@@ -317,8 +333,11 @@ pub struct TicketV0 {
   description: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
+/// What is the current state of a ticket
 pub enum Status {
+  /// The ticket has been opened but the issue has not been resolved
   Open,
+  /// The ticket has a corresponding fix and has been closed
   Closed,
 }

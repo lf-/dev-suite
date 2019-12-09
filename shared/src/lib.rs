@@ -1,3 +1,5 @@
+//! Common functionality needed in many of the tools
+
 use anyhow::{
   bail,
   Result,
@@ -7,6 +9,7 @@ use std::{
   path::PathBuf,
 };
 
+/// Finds the top level folder of the repo and returns it's canonicalized path
 pub fn find_root() -> Result<PathBuf> {
   let mut location = env::current_dir()?;
   let mut found_root = false;
@@ -14,7 +17,7 @@ pub fn find_root() -> Result<PathBuf> {
   for loc in location.ancestors() {
     let mut loc = loc.join(".git");
     if loc.exists() {
-      loc.pop();
+      let _ = loc.pop();
       found_root = true;
       location = loc.canonicalize()?;
       break;

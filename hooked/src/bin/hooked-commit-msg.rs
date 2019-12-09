@@ -1,3 +1,5 @@
+//! Linting tool for commit messages
+
 use shared::find_root;
 use std::{
   env::args,
