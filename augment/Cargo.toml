@@ -1,0 +1,18 @@
+[package]
+name = "augment"
+version = "0.1.0"
+authors = ["Michael Gattozzi <mgattozzi@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "git-pr"
+
+[dependencies]
+anyhow = "1.0"
+paw = "1.0"
+shared = { path = "../shared" }
+structopt = { version = "0.3", features = ["paw"] }
+log = "0.4"
+pretty_env_logger = "0.3"
+git2 = "0.10"

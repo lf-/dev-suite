@@ -1,14 +1,13 @@
 use anyhow::{bail, Result};
 use std::{env, path::PathBuf};
 
-pub fn find_root() -> Result<PathBuf> {
+pub fn find_git_root() -> Result<PathBuf> {
   let mut location = env::current_dir()?;
   let mut found_root = false;
 
   for loc in location.ancestors() {
     let mut loc = loc.join(".git");
     if loc.exists() {
-      loc.pop();
       found_root = true;
       location = loc.canonicalize()?;
       break;
