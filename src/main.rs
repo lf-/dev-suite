@@ -3,6 +3,7 @@ use anyhow::{
   format_err,
   Result,
 };
+use configamajig::*;
 use dialoguer::{
   theme::ColorfulTheme,
   Checkboxes,
@@ -19,6 +20,40 @@ enum Args {
   Update,
   /// Initialize the repo to use dev-suite and it's tools
   Init,
+  /// Commands for configuration of dev-suite
+  Config(Config),
+}
+
+#[derive(structopt::StructOpt)]
+/// dev-suite config commands
+enum Config {
+  /// dev-suite config commands for the current user
+  User(User),
+  /// dev-suite config commands for the current repo
+  Repo(Repo),
+}
+
+#[derive(structopt::StructOpt)]
+enum User {
+  /// Initialize the user with a name
+  Init { name: String },
+  /// Show the current user
+  Show,
+}
+
+#[derive(structopt::StructOpt)]
+enum Repo {
+  /// Initialize the repo with a config
+  Init,
+  /// Show the repo config
+  Show,
+  /// Add someone as a maintainer
+  Add(Add),
+}
+#[derive(structopt::StructOpt)]
+enum Add {
+  /// Make self the maintainer
+  Me,
 }
 
 #[paw::main]
@@ -27,6 +62,19 @@ fn main(args: Args) {
     Args::Init => init(),
     Args::Update => unimplemented!(),
     Args::Install => unimplemented!(),
+    Args::Config(conf) => match conf {
+      Config::User(user) => match user {
+        User::Init { name } => create_user_config(name),
+        User::Show => show_user_config(),
+      },
+      Config::Repo(repo) => match repo {
+        Repo::Init => create_repo_config(),
+        Repo::Show => show_repo_config(),
+        Repo::Add(add) => match add {
+          Add::Me => add_self_to_maintainers(),
+        },
+      },
+    },
   } {
     eprintln!("{}", e);
     std::process::exit(1);
@@ -55,6 +103,13 @@ fn init() -> Result<()> {
   if selections.is_empty() {
     println!("Nothing selected. dev-suite not enabled in this repository.");
   } else {
+    create_repo_config()?;
+    add_self_to_maintainers().map_err(|_| {
+      format_err!(
+      "It looks like this is your first time using dev-suite. Initialize your \
+       config with 'ds config user <name>' then rerun 'ds init'."
+    )
+    })?;
     for selection in selections {
       match selection {
         Tools::Hooked => {

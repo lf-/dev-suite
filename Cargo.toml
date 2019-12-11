@@ -13,6 +13,7 @@ path = "src/main.rs"
 anyhow = "1.0"
 paw = "1.0"
 shared = { path = "shared" }
+configamajig = { path = "configamajig" }
 structopt = { version = "0.3", features = ["paw"] }
 dialoguer = "0.5"
 which = "3.1"

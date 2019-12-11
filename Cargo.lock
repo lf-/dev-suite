@@ -230,6 +230,7 @@ name = "dev-suite"
 version = "0.1.0"
 dependencies = [
  "anyhow 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "configamajig 0.1.0",
  "dialoguer 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "paw 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "shared 0.1.0",
