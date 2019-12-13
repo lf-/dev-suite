@@ -1,4 +1,5 @@
 use crate::{
+  Status,
   Ticket,
   TicketV0,
 };
@@ -116,4 +117,31 @@ pub fn uuid_v1() -> Result<Uuid> {
     ),
     &[random(), random(), random(), random(), random(), random()],
   )?)
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn save_ticket(ticket: Ticket) -> Result<()> {
+  fs::write(ticket_path(&ticket)?, toml::to_string_pretty(&ticket)?)?;
+  Ok(())
+}
+
+pub fn ticket_file_name(ticket: &Ticket) -> String {
+  let mut name = ticket
+    .title
+    .split_whitespace()
+    .collect::<Vec<&str>>()
+    .join("-");
+  name.push_str(".toml");
+  name = name.to_lowercase();
+  name
+}
+
+pub fn ticket_path(ticket: &Ticket) -> Result<PathBuf> {
+  Ok(
+    match ticket.status {
+      Status::Open => open_tickets()?,
+      Status::Closed => closed_tickets()?,
+    }
+    .join(ticket_file_name(&ticket)),
+  )
 }

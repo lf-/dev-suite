@@ -80,14 +80,11 @@ fn main(args: Args) {
 }
 
 fn init() -> Result<()> {
-  let root = ticket_root()?;
-  debug!("Creating ticket directory at {}.", root.display());
-  debug!("Creating open directory.");
-  fs::create_dir_all(&root.join("open"))?;
-  debug!("Creating closed directory");
-  fs::create_dir_all(&root.join("closed"))?;
+  debug!("Creating open ticket directory.");
+  fs::create_dir_all(&open_tickets()?)?;
+  debug!("Creating closed ticket directory");
+  fs::create_dir_all(&closed_tickets()?)?;
   trace!("Done initializing tickets.");
-  info!("Created ticket directory at {}.", root.display());
   Ok(())
 }
 
@@ -95,7 +92,6 @@ fn new() -> Result<()> {
   debug!("Getting ticket root.");
   let ticket_root = ticket_root()?;
   trace!("Got ticket root: {}", ticket_root.display());
-  let open = open_tickets()?;
   let description = ticket_root.join("description");
 
   let mut rl = Editor::<()>::new();
@@ -139,68 +135,38 @@ fn new() -> Result<()> {
     version: Version::V1,
   };
 
-  debug!("Converting ticket to toml and writing to disk.");
-  fs::write(
-    open.join(&format!(
-      "{}.toml",
-      t.title
-        .to_lowercase()
-        .split_whitespace()
-        .collect::<Vec<&str>>()
-        .join("-")
-    )),
-    toml::to_string_pretty(&t)?,
-  )?;
-  trace!("Finished writing data to disk.");
-
-  Ok(())
+  save_ticket(t)
 }
 
 fn show(id: Uuid) -> Result<()> {
-  debug!("Getting ticket root.");
-  let ticket_root = ticket_root()?;
-  trace!("Ticket root at {}.", ticket_root.display());
-  let open = ticket_root.join("open");
-  let closed = ticket_root.join("closed");
   let mut found = false;
-
-  // Fast enough for now but maybe not in the future
-  debug!("Looking for ticket.");
-  for entry in fs::read_dir(&open)?.chain(fs::read_dir(&closed)?) {
-    let entry = entry?;
-    let path = entry.path();
-    trace!("Looking at entry {}.", path.display());
-    if path.is_file() {
-      let ticket = toml::from_slice::<Ticket>(&fs::read(&path)?)?;
-      if ticket.id == id {
-        trace!("This is the expected entry.");
-        println!(
-          "{}",
-          format!("{} - {}\n", ticket.id, ticket.title).bold().red()
-        );
-        if !ticket.assignees.is_empty() {
-          println!(
-            "{}{}",
-            "Assignees: ".bold().purple(),
-            ticket.assignees.join(", ")
-          );
-        }
-
-        println!(
-          "{}{}\n\n{}",
-          "Status: ".bold().purple(),
-          match ticket.status {
-            Status::Open => "Open".bold().green(),
-            Status::Closed => "Closed".bold().red(),
-          },
-          ticket.description
-        );
-        for (_, name, comment) in ticket.comments.values() {
-          println!("{}\n{}\n", name.0.cyan(), comment.0);
-        }
-        found = true;
-        break;
-      }
+  for ticket in get_all_tickets()? {
+    if ticket.id == id {
+      println!(
+        "{}\n{}{}\n{}{}\n\n{}\n{}",
+        format!("{} - {}\n", ticket.id, ticket.title).bold().red(),
+        "Status: ".bold().purple(),
+        match ticket.status {
+          Status::Open => "Open".bold().green(),
+          Status::Closed => "Closed".bold().red(),
+        },
+        "Assignees: ".bold().purple(),
+        if ticket.assignees.is_empty() {
+          "None".to_owned().blue()
+        } else {
+          ticket.assignees.join(", ").blue()
+        },
+        ticket.description,
+        ticket.comments.values().fold(
+          String::new(),
+          |mut acc, (_, name, comment)| {
+            acc.push_str(&format!("{}\n{}", name.0.cyan(), comment.0));
+            acc
+          }
+        )
+      );
+      found = true;
+      break;
     }
   }
   if found {
@@ -211,36 +177,18 @@ fn show(id: Uuid) -> Result<()> {
 }
 
 fn close(id: Uuid) -> Result<()> {
-  debug!("Getting ticket root.");
-  let ticket_root = ticket_root()?;
-  trace!("Ticket root at {}.", ticket_root.display());
-  let open = ticket_root.join("open");
-  let closed = ticket_root.join("closed");
   let mut found = false;
-  // Fast enough for now but maybe not in the future
-  debug!("Looking for open ticket with id {}", id);
-  for entry in fs::read_dir(&open)? {
-    let entry = entry?;
-    let path = entry.path();
-    trace!("Looking at entry {}.", path.display());
-    if path.is_file() {
-      let mut ticket = toml::from_slice::<Ticket>(&fs::read(&path)?)?;
-      if ticket.id == id {
-        debug!("Ticket found setting it to closed.");
-        ticket.status = Status::Closed;
-        trace!("Writing ticket to disk in the closed directory.");
-        fs::write(
-          closed.join(path.file_name().expect("Path should have a file name")),
-          toml::to_string_pretty(&ticket)?,
-        )?;
-        debug!("Removing old ticket.");
-        fs::remove_file(&path)?;
-        trace!("Removed the old ticket.");
-        found = true;
-        break;
-      }
+  for mut ticket in get_open_tickets()? {
+    if ticket.id == id {
+      let path = ticket_path(&ticket)?;
+      ticket.status = Status::Closed;
+      save_ticket(ticket)?;
+      fs::remove_file(path)?;
+      found = true;
+      break;
     }
   }
+
   if found {
     Ok(())
   } else {
@@ -252,9 +200,6 @@ fn close(id: Uuid) -> Result<()> {
 fn migrate() -> Result<()> {
   let tickets = get_all_ticketsv0()?;
 
-  let open_tickets_path = open_tickets()?;
-  let closed_tickets_path = closed_tickets()?;
-
   for t in tickets {
     let ticket = Ticket {
       title: t.title,
@@ -265,21 +210,14 @@ fn migrate() -> Result<()> {
       comments: BTreeMap::new(),
       version: Version::V1,
     };
-
-    let path = match ticket.status {
-      Status::Open => &open_tickets_path,
-      Status::Closed => &closed_tickets_path,
-    };
-
-    let mut name = ticket
-      .title
-      .split_whitespace()
-      .collect::<Vec<&str>>()
-      .join("-");
-    name.push_str(".toml");
-    name = name.to_lowercase();
-    fs::write(path.join(&name), toml::to_string_pretty(&ticket)?)?;
-    fs::remove_file(path.join(format!("{}-{}", t.number, name)))?;
+    let mut path = ticket_path(&ticket)?;
+    let _ = path.pop();
+    fs::remove_file(path.join(format!(
+      "{}-{}",
+      t.number,
+      ticket_file_name(&ticket)
+    )))?;
+    save_ticket(ticket)?;
     // We need to make sure we get different times for each ticket
     // Possible future migrations might not have this issue
     thread::sleep(time::Duration::from_millis(1000));
@@ -299,24 +237,7 @@ fn comment(id: Uuid, message: String) -> Result<()> {
     uuid_v1()?,
     (user_config.uuid, Name(user_config.name), Comment(message)),
   );
-  for (k, v) in &ticket.comments {
-    info!("{:?} = {:?}", k, v);
-  }
-  let open_tickets_path = open_tickets()?;
-  let closed_tickets_path = closed_tickets()?;
-  let path = match ticket.status {
-    Status::Open => &open_tickets_path,
-    Status::Closed => &closed_tickets_path,
-  };
-  let mut name = ticket
-    .title
-    .split_whitespace()
-    .collect::<Vec<&str>>()
-    .join("-");
-  name.push_str(".toml");
-  name = name.to_lowercase();
-  fs::write(path.join(&name), toml::to_string_pretty(&ticket)?)?;
-
+  save_ticket(ticket)?;
   Ok(())
 }
 #[derive(Serialize, Deserialize, Debug)]
