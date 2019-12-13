@@ -9,5 +9,6 @@ in terminal experience, almost as if they never left GitHub. A basic
 tui that allows one to read and comment on issues will suffice to close
 this ticket.
 '''
-comments = []
 version = 'V1'
+
+[comments]

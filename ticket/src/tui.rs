@@ -233,7 +233,7 @@ pub fn run() -> Result<()> {
           app.table("Open").render(&mut f, horizontal[0]);
 
           Paragraph::new(app.description("Open").iter())
-            .block(Block::default().title("Description").borders(Borders::ALL))
+            .block(Block::default().borders(Borders::ALL))
             .alignment(Alignment::Left)
             .wrap(true)
             .render(&mut f, horizontal[1]);
@@ -242,7 +242,7 @@ pub fn run() -> Result<()> {
           app.table("Closed").render(&mut f, horizontal[0]);
 
           Paragraph::new(app.description("Closed").iter())
-            .block(Block::default().title("Description").borders(Borders::ALL))
+            .block(Block::default().borders(Borders::ALL))
             .alignment(Alignment::Left)
             .wrap(true)
             .render(&mut f, horizontal[1]);
@@ -314,7 +314,23 @@ impl<'a> App<'a> {
     let mut description = vec![];
     for (idx, i) in self.tickets.tickets.get(tab).unwrap().iter().enumerate() {
       if idx == self.tickets.index {
-        description = vec![Text::raw(i.description.to_owned())];
+        description = {
+          let header = Style::default().fg(Color::Red).modifier(Modifier::BOLD);
+          let mut desc = vec![
+            Text::styled("Description\n-------------\n", header),
+            Text::raw(i.description.to_owned()),
+          ];
+          let name_style =
+            Style::default().fg(Color::Cyan).modifier(Modifier::BOLD);
+          if i.comments.is_empty() {
+            desc.push(Text::styled("\nComments\n--------\n", header));
+            for (_, name, comment) in i.comments.values() {
+              desc.push(Text::styled(format!("\n{}\n", name.0), name_style));
+              desc.push(Text::raw(format!("{}\n", comment.0)));
+            }
+          }
+          desc
+        };
         break;
       }
     }

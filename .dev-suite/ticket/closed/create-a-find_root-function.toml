@@ -11,5 +11,6 @@ a more generalized function and be shared amongst future tools as this
 will be a common operation. It shouldn't matter where in a repo you are,
 the tools should just work.
 '''
-comments = []
 version = 'V1'
+
+[comments]

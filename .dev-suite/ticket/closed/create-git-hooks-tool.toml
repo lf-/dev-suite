@@ -10,5 +10,6 @@ repo is a good thing to standardizing checks across a team to avoid
 issues that just get caught in CI way later when it would be trivial to
 catch with a script.
 '''
-comments = []
 version = 'V1'
+
+[comments]

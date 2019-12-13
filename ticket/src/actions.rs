@@ -6,15 +6,31 @@ use anyhow::{
   bail,
   Result,
 };
+use chrono::prelude::*;
 use log::*;
+use rand::prelude::*;
 use shared::find_root;
 use std::{
+  convert::TryInto,
   fs,
   path::{
     Path,
     PathBuf,
   },
 };
+use uuid::{
+  v1::{
+    Context,
+    Timestamp,
+  },
+  Uuid,
+};
+
+pub fn get_all_tickets() -> Result<Vec<Ticket>> {
+  let mut tickets = get_open_tickets()?;
+  tickets.extend(get_closed_tickets()?);
+  Ok(tickets)
+}
 
 pub fn get_open_tickets() -> Result<Vec<Ticket>> {
   get_tickets(&open_tickets()?)
@@ -89,4 +105,15 @@ fn get_ticketsv0(path: &Path) -> Result<Vec<TicketV0>> {
   }
   out.sort_by(|a, b| a.number.cmp(&b.number));
   Ok(out)
+}
+
+pub fn uuid_v1() -> Result<Uuid> {
+  Ok(Uuid::new_v1(
+    Timestamp::from_unix(
+      Context::new(random()),
+      Utc::now().timestamp().try_into()?,
+      0,
+    ),
+    &[random(), random(), random(), random(), random(), random()],
+  )?)
 }

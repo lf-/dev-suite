@@ -88,8 +88,10 @@ pub fn set_repo_config(repo_config: RepoConfig) -> Result<()> {
 /// User Config struct
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserConfig {
-  name: String,
-  uuid: Uuid,
+  /// The name of the user using dev-suite
+  pub name: String,
+  /// The uuid of the user using dev-suite
+  pub uuid: Uuid,
 }
 
 impl UserConfig {

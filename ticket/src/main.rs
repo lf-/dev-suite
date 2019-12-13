@@ -7,10 +7,11 @@ mod tui;
 use actions::*;
 use anyhow::{
   bail,
+  format_err,
   Result,
 };
-use chrono::prelude::*;
 use colored::*;
+use configamajig::*;
 use log::*;
 use rustyline::{
   error::ReadlineError,
@@ -21,7 +22,7 @@ use serde::{
   Serialize,
 };
 use std::{
-  convert::TryInto,
+  collections::BTreeMap,
   env,
   fs,
   process,
@@ -29,13 +30,7 @@ use std::{
   thread,
   time,
 };
-use uuid::{
-  v1::{
-    Context,
-    Timestamp,
-  },
-  Uuid,
-};
+use uuid::Uuid;
 
 #[derive(structopt::StructOpt)]
 struct Args {
@@ -53,8 +48,10 @@ enum Cmd {
   New,
   /// Show a ticket on the command line
   Show { id: Uuid },
-  /// Close a ticket on the command line
+  /// Close a ticket from the command line
   Close { id: Uuid },
+  /// Comment on a ticket from the command line
+  Comment { id: Uuid, message: String },
 }
 
 #[paw::main]
@@ -71,6 +68,7 @@ fn main(args: Args) {
       Cmd::Migrate => migrate(),
       Cmd::Show { id } => show(id),
       Cmd::Close { id } => close(id),
+      Cmd::Comment { id, message } => comment(id, message),
     } {
       error!("{}", e);
       std::process::exit(1);
@@ -134,17 +132,10 @@ fn new() -> Result<()> {
   let t = Ticket {
     title,
     status: Status::Open,
-    id: Uuid::new_v1(
-      Timestamp::from_unix(
-        Context::new(1),
-        Utc::now().timestamp().try_into()?,
-        0,
-      ),
-      &[0, 5, 2, 4, 9, 3],
-    )?,
+    id: uuid_v1()?,
     assignees: Vec::new(),
     description: description_contents,
-    comments: Vec::new(),
+    comments: BTreeMap::new(),
     version: Version::V1,
   };
 
@@ -195,7 +186,7 @@ fn show(id: Uuid) -> Result<()> {
           );
         }
 
-        print!(
+        println!(
           "{}{}\n\n{}",
           "Status: ".bold().purple(),
           match ticket.status {
@@ -204,6 +195,9 @@ fn show(id: Uuid) -> Result<()> {
           },
           ticket.description
         );
+        for (_, name, comment) in ticket.comments.values() {
+          println!("{}\n{}\n", name.0.cyan(), comment.0);
+        }
         found = true;
         break;
       }
@@ -256,7 +250,6 @@ fn close(id: Uuid) -> Result<()> {
 
 /// Upgrade from V0 to V1 of the ticket
 fn migrate() -> Result<()> {
-  let ctx = Context::new(1);
   let tickets = get_all_ticketsv0()?;
 
   let open_tickets_path = open_tickets()?;
@@ -266,13 +259,10 @@ fn migrate() -> Result<()> {
     let ticket = Ticket {
       title: t.title,
       status: t.status,
-      id: Uuid::new_v1(
-        Timestamp::from_unix(&ctx, Utc::now().timestamp().try_into()?, 0),
-        &[0, 5, 2, 4, 9, 3],
-      )?,
+      id: uuid_v1()?,
       assignees: t.assignee.map_or_else(Vec::new, |a| vec![a]),
       description: t.description,
-      comments: Vec::new(),
+      comments: BTreeMap::new(),
       version: Version::V1,
     };
 
@@ -297,6 +287,38 @@ fn migrate() -> Result<()> {
   Ok(())
 }
 
+fn comment(id: Uuid, message: String) -> Result<()> {
+  let mut ticket = get_all_tickets()?
+    .into_iter()
+    .find(|t| t.id == id)
+    .ok_or_else(|| {
+      format_err!("The uuid '{}' is not associated with any ticket")
+    })?;
+  let user_config = get_user_config()?;
+  let _ = ticket.comments.insert(
+    uuid_v1()?,
+    (user_config.uuid, Name(user_config.name), Comment(message)),
+  );
+  for (k, v) in &ticket.comments {
+    info!("{:?} = {:?}", k, v);
+  }
+  let open_tickets_path = open_tickets()?;
+  let closed_tickets_path = closed_tickets()?;
+  let path = match ticket.status {
+    Status::Open => &open_tickets_path,
+    Status::Closed => &closed_tickets_path,
+  };
+  let mut name = ticket
+    .title
+    .split_whitespace()
+    .collect::<Vec<&str>>()
+    .join("-");
+  name.push_str(".toml");
+  name = name.to_lowercase();
+  fs::write(path.join(&name), toml::to_string_pretty(&ticket)?)?;
+
+  Ok(())
+}
 #[derive(Serialize, Deserialize, Debug)]
 /// The fundamental type this tool revolves around. The ticket represents
 /// everything about an issue or future plan for the code base.
@@ -306,8 +328,9 @@ pub struct Ticket {
   id: Uuid,
   assignees: Vec<String>,
   description: String,
-  comments: Vec<(User, String)>,
   version: Version,
+  #[serde(serialize_with = "toml::ser::tables_last")]
+  comments: BTreeMap<Uuid, (Uuid, Name, Comment)>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -319,8 +342,12 @@ pub enum Version {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-/// Newtype to represent a User or maintainer
-pub struct User(String);
+/// Newtype to represent a users Name
+pub struct Name(String);
+
+#[derive(Serialize, Deserialize, Debug)]
+/// Newtype to represent a Comment
+pub struct Comment(String);
 
 #[derive(Serialize, Deserialize, Debug)]
 /// Original version of the tickets on disk. This exists for historical reasons

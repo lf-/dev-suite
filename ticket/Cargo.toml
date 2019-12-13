@@ -10,8 +10,13 @@ license = "GPL-3.0"
 [dependencies]
 anyhow = "1.0"
 colored = "1.9"
+configamajig = { path = "../configamajig" }
 chrono = "0.4"
 paw = "1.0"
+# Pinning a specific version in case they break everything again and mess up semver,
+# though this won't fix if they break the semver on the core crate. Either way I don't
+# trust this crate enough to not pin it.
+rand = "0.7.2"
 rustyline = "5.0"
 serde = { version = "1.0", features = ["derive"] }
 shared = { path = "../shared" }

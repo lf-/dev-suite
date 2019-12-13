@@ -8,5 +8,6 @@ inside of the git repo itself. While it works it's hardly ideal. The
 ability to edit tickets by specifiying the id with an accompanying cli
 arg to go with it would be enough to close this.
 '''
-comments = []
 version = 'V1'
+
+[comments]
