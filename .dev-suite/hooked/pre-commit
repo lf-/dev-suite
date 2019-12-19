@@ -3,5 +3,5 @@ set -eu -o pipefail
 
 cargo build --all
 cargo test --all
-cargo +nightly fmt --all -- --check
+rustup run nightly cargo fmt --all -- --check
 cargo clippy --all --all-targets -- -W clippy::pedantic
