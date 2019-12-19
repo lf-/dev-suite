@@ -47,8 +47,6 @@ rustflags = [
   "-D",
   "unconditional-recursion",
   "-D",
-  "unions-with-drop-fields",
-  "-D",
   "unused",
   "-D",
   "unused-allocation",

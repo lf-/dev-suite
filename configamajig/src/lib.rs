@@ -95,7 +95,7 @@ pub struct UserConfig {
 }
 
 impl UserConfig {
-  /// Create a new UserConfig from a given name and assign UUID to them
+  /// Create a new `UserConfig` from a given name and assign UUID to them
   pub fn new(name: impl Into<String>) -> Self {
     Self {
       name: name.into(),
@@ -111,7 +111,8 @@ pub struct RepoConfig {
 }
 
 impl RepoConfig {
-  /// Create a new RepoConfig
+  /// Create a new `RepoConfig`
+  #[must_use]
   pub fn new() -> Self {
     Self {
       maintainers: Vec::new(),
