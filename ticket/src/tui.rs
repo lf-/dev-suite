@@ -7,24 +7,30 @@ use crate::{
   Ticket,
 };
 use anyhow::Result;
+use crossterm::{
+  cursor::Hide,
+  event::{
+    self,
+    DisableMouseCapture,
+    EnableMouseCapture,
+    Event as CEvent,
+    KeyCode,
+  },
+  queue,
+  terminal::*,
+};
 use std::{
   collections::BTreeMap,
-  io,
+  io::{
+    self,
+    Write,
+  },
   sync::mpsc,
   thread,
   time::Duration,
 };
-use termion::{
-  event::Key,
-  input::{
-    MouseTerminal,
-    TermRead,
-  },
-  raw::IntoRawMode,
-  screen::AlternateScreen,
-};
 use tui::{
-  backend::TermionBackend,
+  backend::CrosstermBackend,
   layout::{
     Alignment,
     Constraint,
@@ -110,88 +116,31 @@ impl TicketState {
     }
   }
 }
-/// A small event handler that wrap termion input and tick events. Each event
-/// type is handled in its own thread and returned to a common `Receiver`
-#[allow(dead_code)]
-pub struct Events {
-  rx: mpsc::Receiver<Event<Key>>,
-  input_handle: thread::JoinHandle<()>,
-  tick_handle: thread::JoinHandle<()>,
-}
-
 struct App<'a> {
   tabs: TabsState<'a>,
   tickets: TicketState,
+  should_quit: bool,
 }
 #[derive(Debug, Clone, Copy)]
 pub struct Config {
-  pub exit_key: Key,
+  pub exit_key: KeyCode,
   pub tick_rate: Duration,
 }
 
 impl Default for Config {
   fn default() -> Self {
     Self {
-      exit_key: Key::Char('q'),
+      exit_key: KeyCode::Char('q'),
       tick_rate: Duration::from_millis(250),
     }
   }
 }
-
-impl Events {
-  pub fn new() -> Self {
-    Self::with_config(Config::default())
-  }
-
-  pub fn with_config(config: Config) -> Self {
-    let (tx, rx) = mpsc::channel();
-    let input_handle = {
-      let tx = tx.clone();
-      thread::spawn(move || {
-        let stdin = io::stdin();
-        for evt in stdin.keys() {
-          if let Ok(key) = evt {
-            if tx.send(Event::Input(key)).is_err() {
-              return;
-            }
-            if key == config.exit_key {
-              return;
-            }
-          }
-        }
-      })
-    };
-    let tick_handle = {
-      let tx = tx.clone();
-      thread::spawn(move || {
-        let tx = tx.clone();
-        loop {
-          tx.send(Event::Tick).unwrap();
-          thread::sleep(config.tick_rate);
-        }
-      })
-    };
-    Self {
-      rx,
-      input_handle,
-      tick_handle,
-    }
-  }
-
-  pub fn next(&self) -> Result<Event<Key>, mpsc::RecvError> {
-    self.rx.recv()
-  }
-}
 pub fn run() -> Result<()> {
   // Terminal initialization
-  let stdout = io::stdout().into_raw_mode()?;
-  let stdout = MouseTerminal::from(stdout);
-  let stdout = AlternateScreen::from(stdout);
-  let backend = TermionBackend::new(stdout);
+  enable_raw_mode()?;
+  queue!(io::stdout(), EnterAlternateScreen, EnableMouseCapture, Hide)?;
+  let backend = CrosstermBackend::new(io::stdout());
   let mut terminal = Terminal::new(backend)?;
-  terminal.hide_cursor()?;
-
-  let events = Events::new();
 
   // App
   let mut app = App {
@@ -202,7 +151,23 @@ pub fn run() -> Result<()> {
       let _ = map.insert("Closed".into(), get_closed_tickets()?);
       TicketState::new(map)
     },
+    should_quit: false,
   };
+
+  terminal.clear()?;
+  let (tx, rx) = mpsc::channel();
+  let _ = thread::spawn(move || {
+    loop {
+      // poll for tick rate duration, if no events, sent tick event.
+      if event::poll(Duration::from_millis(250)).unwrap() {
+        if let CEvent::Key(key) = event::read().unwrap() {
+          tx.send(Event::Input(key)).unwrap();
+        }
+      }
+
+      tx.send(Event::Tick).unwrap();
+    }
+  });
 
   // Main loop
   loop {
@@ -251,32 +216,37 @@ pub fn run() -> Result<()> {
       }
     })?;
 
-    match events.next()? {
-      Event::Input(input) => match input {
-        Key::Char('q') => {
-          break;
+    match rx.recv()? {
+      Event::Input(event) => match event.code {
+        KeyCode::Char('q') => {
+          app.should_quit = true;
         }
-        Key::Right => {
+        KeyCode::Right => {
           if app.tabs.index == 0 {
             app.tickets.status = Status::Closed;
             app.tickets.index = 0;
           }
           app.tabs.next();
         }
-        Key::Left => {
+        KeyCode::Left => {
           if app.tabs.index != 0 {
             app.tickets.status = Status::Open;
             app.tickets.index = 0;
           }
           app.tabs.previous();
         }
-        Key::Up => app.tickets.previous(),
-        Key::Down => app.tickets.next(),
+        KeyCode::Up => app.tickets.previous(),
+        KeyCode::Down => app.tickets.next(),
         _ => {}
       },
       Event::Tick => continue,
     }
+    if app.should_quit {
+      break;
+    }
   }
+  queue!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+  disable_raw_mode()?;
   Ok(())
 }
 
