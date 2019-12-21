@@ -135,7 +135,7 @@ fn new() -> Result<()> {
     version: Version::V1,
   };
 
-  save_ticket(t)
+  save_ticket(&t)
 }
 
 fn show(id: Uuid) -> Result<()> {
@@ -182,7 +182,7 @@ fn close(id: Uuid) -> Result<()> {
     if ticket.id == id {
       let path = ticket_path(&ticket)?;
       ticket.status = Status::Closed;
-      save_ticket(ticket)?;
+      save_ticket(&ticket)?;
       fs::remove_file(path)?;
       found = true;
       break;
@@ -217,7 +217,7 @@ fn migrate() -> Result<()> {
       t.number,
       ticket_file_name(&ticket)
     )))?;
-    save_ticket(ticket)?;
+    save_ticket(&ticket)?;
     // We need to make sure we get different times for each ticket
     // Possible future migrations might not have this issue
     thread::sleep(time::Duration::from_millis(1000));
@@ -237,7 +237,7 @@ fn comment(id: Uuid, message: String) -> Result<()> {
     uuid_v1()?,
     (user_config.uuid, Name(user_config.name), Comment(message)),
   );
-  save_ticket(ticket)?;
+  save_ticket(&ticket)?;
   Ok(())
 }
 #[derive(Serialize, Deserialize, Debug)]

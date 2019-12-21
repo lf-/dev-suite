@@ -119,8 +119,7 @@ pub fn uuid_v1() -> Result<Uuid> {
   )?)
 }
 
-#[allow(clippy::needless_pass_by_value)]
-pub fn save_ticket(ticket: Ticket) -> Result<()> {
+pub fn save_ticket(ticket: &Ticket) -> Result<()> {
   fs::write(ticket_path(&ticket)?, toml::to_string_pretty(&ticket)?)?;
   Ok(())
 }
