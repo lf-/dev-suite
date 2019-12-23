@@ -9,15 +9,22 @@ use dialoguer::{
   Checkboxes,
 };
 use shared::find_root;
-use std::process::Command;
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::OpenOptionsExt;
+use std::{
+  fs::{
+    create_dir_all,
+    OpenOptions,
+  },
+  path::PathBuf,
+  process::Command,
+};
 use which::which;
 
 #[derive(structopt::StructOpt)]
 enum Args {
   /// Download and install all of dev-suite
   Install,
-  /// Update all of dev-suite
-  Update,
   /// Initialize the repo to use dev-suite and it's tools
   Init,
   /// Commands for configuration of dev-suite
@@ -60,8 +67,7 @@ enum Add {
 fn main(args: Args) {
   if let Err(e) = match args {
     Args::Init => init(),
-    Args::Update => unimplemented!(),
-    Args::Install => unimplemented!(),
+    Args::Install => install(),
     Args::Config(conf) => match conf {
       Config::User(user) => match user {
         User::Init { name } => create_user_config(name),
@@ -138,4 +144,60 @@ fn init() -> Result<()> {
 enum Tools {
   Hooked,
   Ticket,
+}
+
+/// Install all of dev-suite
+fn install() -> Result<()> {
+  static BASE_URL: &str =
+    "https://dev-suite-spaces.nyc3.digitaloceanspaces.com/";
+
+  #[cfg(target_os = "macos")]
+  static TOOLS: [&str; 2] = ["hooked_osx", "ticket_osx"];
+  #[cfg(target_os = "linux")]
+  static TOOLS: [&str; 2] = ["hooked_linux", "ticket_linux"];
+  #[cfg(target_os = "windows")]
+  static TOOLS: [&str; 2] = ["hooked_windows", "ticket_windows"];
+
+  #[cfg(target_os = "macos")]
+  static INSTALLATION_LOCATION: &str = "/usr/local/bin";
+  #[cfg(target_os = "linux")]
+  static INSTALLATION_LOCATION: &str = "/usr/local/bin";
+  #[cfg(target_os = "windows")]
+  static INSTALLATION_LOCATION: &str = r#"C:\ProgramData\dev-suite"#;
+
+  let client = reqwest::blocking::Client::new();
+  let mut location = PathBuf::from(INSTALLATION_LOCATION);
+  create_dir_all(&location)?;
+
+  for tool in &TOOLS {
+    let tool_name = tool.split('_').nth(0).unwrap();
+    location.push(tool_name);
+    if location.exists() {
+      println!("{} already exists, skipping", tool_name);
+      let _ = location.pop();
+    } else {
+      println!("Installing {}", tool_name);
+      let url = BASE_URL.to_owned() + tool;
+      let mut program = client.get(&url).send()?;
+
+      #[cfg(target_family = "unix")]
+      let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .mode(0o755)
+        .open(&location)?;
+      #[cfg(target_family = "windows")]
+      let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(&location)?;
+
+      let _ = program.copy_to(&mut file)?;
+      let _ = location.pop();
+    }
+  }
+
+  println!("Installation complete");
+
+  Ok(())
 }

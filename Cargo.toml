@@ -11,11 +11,12 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
-paw = "1.0"
-shared = { path = "shared" }
 configamajig = { path = "configamajig" }
-structopt = { version = "0.3", features = ["paw"] }
 dialoguer = "0.5"
+paw = "1.0"
+reqwest = { version = "0.10.0-alpha.2", features = ["blocking"] }
+shared = { path = "shared" }
+structopt = { version = "0.3", features = ["paw"] }
 which = "3.1"
 
 [workspace]
