@@ -369,13 +369,31 @@ impl<'a> App<'a> {
           ];
           let name_style =
             Style::default().fg(Color::Cyan).modifier(Modifier::BOLD);
+          if i.0.assignees.is_empty() {
+            desc.push(Text::styled("\nAssignees\n---------\n", header));
+          } else {
+            desc.push(Text::styled("\nAssignees\n---------\n", header));
+            if i.0.assignees.len() == 1 {
+              let (_, name) = &i.0.assignees[0];
+              desc.push(Text::styled(name.0.clone(), name_style));
+            } else {
+              for (idx, (_, name)) in i.0.assignees.iter().enumerate() {
+                if idx < i.0.assignees.len() - 1 {
+                  desc.push(Text::styled(format!("{}, ", name.0), name_style));
+                } else {
+                  desc.push(Text::styled(name.0.clone(), name_style));
+                }
+              }
+            }
+          }
+
           if i.0.comments.is_empty() {
             desc.push(Text::styled("\nComments\n--------\n", header));
           } else {
             desc.push(Text::styled("\nComments\n--------\n", header));
             for (_, name, comment) in i.0.comments.values() {
-              desc.push(Text::styled(format!("\n{}\n", name.0), name_style));
-              desc.push(Text::raw(format!("{}\n", comment.0)));
+              desc.push(Text::styled(format!("{}\n", name.0), name_style));
+              desc.push(Text::raw(format!("{}\n\n", comment.0)));
             }
           }
           desc

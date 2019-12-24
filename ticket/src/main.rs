@@ -52,6 +52,23 @@ enum Cmd {
   Close { id: Uuid },
   /// Comment on a ticket from the command line
   Comment { id: Uuid, message: String },
+  /// Assing someone to a ticket from the command line
+  Assign {
+    id: Uuid,
+    #[structopt(subcommand)]
+    to: Placeholder,
+  },
+}
+
+#[derive(structopt::StructOpt)]
+enum Placeholder {
+  To(Who),
+}
+
+#[derive(structopt::StructOpt)]
+enum Who {
+  Me,
+  Them { id: Uuid, name: String },
 }
 
 #[paw::main]
@@ -69,6 +86,7 @@ fn main(args: Args) {
       Cmd::Show { id } => show(id),
       Cmd::Close { id } => close(id),
       Cmd::Comment { id, message } => comment(id, message),
+      Cmd::Assign { id, to } => assign(id, to),
     } {
       error!("{}", e);
       std::process::exit(1);
@@ -135,7 +153,9 @@ fn new() -> Result<()> {
     version: Version::V1,
   };
 
-  save_ticket(&t)
+  save_ticket(&t)?;
+  println!("Ticket Created: {}", t.id);
+  Ok(())
 }
 
 fn show(id: Uuid) -> Result<()> {
@@ -154,7 +174,19 @@ fn show(id: Uuid) -> Result<()> {
         if ticket.assignees.is_empty() {
           "None".to_owned().blue()
         } else {
-          ticket.assignees.join(", ").blue()
+          let mut commas = ticket.assignees.len();
+          ticket
+            .assignees
+            .into_iter()
+            .fold(String::new(), |mut acc, (_, name)| {
+              acc.push_str(&name.0);
+              if commas > 1 {
+                acc.push_str(", ");
+                commas -= 1;
+              }
+              acc
+            })
+            .blue()
         },
         ticket.description,
         ticket.comments.values().fold(
@@ -205,7 +237,7 @@ fn migrate() -> Result<()> {
       title: t.title,
       status: t.status,
       id: uuid_v1()?,
-      assignees: t.assignee.map_or_else(Vec::new, |a| vec![a]),
+      assignees: Vec::new(),
       description: t.description,
       comments: BTreeMap::new(),
       version: Version::V1,
@@ -240,6 +272,41 @@ fn comment(id: Uuid, message: String) -> Result<()> {
   save_ticket(&ticket)?;
   Ok(())
 }
+
+fn assign(id: Uuid, to: Placeholder) -> Result<()> {
+  let mut ticket = get_all_tickets()?
+    .into_iter()
+    .find(|t| t.id == id)
+    .ok_or_else(|| {
+      format_err!("The uuid '{}' is not associated with any ticket")
+    })?;
+  match to {
+    Placeholder::To(who) => match who {
+      Who::Me => {
+        let config = get_user_config()?;
+        if !ticket
+          .assignees
+          .iter()
+          .any(|(id, name)| config.uuid == *id && config.name == name.0)
+        {
+          ticket.assignees.push((config.uuid, Name(config.name)));
+        }
+        save_ticket(&ticket)?;
+      }
+      Who::Them { id, name } => {
+        let assignee_does_not_exist =
+          !ticket.assignees.iter().any(|(id_inside, name_inside)| {
+            id == *id_inside && name == name_inside.0
+          });
+        if assignee_does_not_exist {
+          ticket.assignees.push((id, Name(name)));
+        }
+        save_ticket(&ticket)?;
+      }
+    },
+  }
+  Ok(())
+}
 #[derive(Serialize, Deserialize, Debug)]
 /// The fundamental type this tool revolves around. The ticket represents
 /// everything about an issue or future plan for the code base.
@@ -247,7 +314,7 @@ pub struct Ticket {
   title: String,
   status: Status,
   id: Uuid,
-  assignees: Vec<String>,
+  assignees: Vec<(Uuid, Name)>,
   description: String,
   version: Version,
   #[serde(serialize_with = "toml::ser::tables_last")]
