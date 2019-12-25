@@ -341,6 +341,7 @@ dependencies = [
  "anyhow 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "configamajig 0.1.0",
  "dialoguer 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dirs 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "paw 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.10.0-alpha.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "shared 0.1.0",

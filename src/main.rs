@@ -8,6 +8,7 @@ use dialoguer::{
   theme::ColorfulTheme,
   Checkboxes,
 };
+use dirs::executable_dir;
 use shared::find_root;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::OpenOptionsExt;
@@ -16,7 +17,6 @@ use std::{
     create_dir_all,
     OpenOptions,
   },
-  path::PathBuf,
   process::Command,
 };
 use which::which;
@@ -159,14 +159,13 @@ fn install() -> Result<()> {
   static TOOLS: [&str; 2] = ["hooked_windows", "ticket_windows"];
 
   #[cfg(target_os = "macos")]
-  static INSTALLATION_LOCATION: &str = "/usr/local/bin";
+  let mut location = PathBuf::from("/usr/local/bin");
   #[cfg(target_os = "linux")]
-  static INSTALLATION_LOCATION: &str = "/usr/local/bin";
+  let mut location = executable_dir().unwrap();
   #[cfg(target_os = "windows")]
-  static INSTALLATION_LOCATION: &str = r#"C:\ProgramData\dev-suite"#;
+  let mut location = PathBuf::from(r#"C:\ProgramData\dev-suite"#);
 
   let client = reqwest::blocking::Client::new();
-  let mut location = PathBuf::from(INSTALLATION_LOCATION);
   create_dir_all(&location)?;
 
   for tool in &TOOLS {

@@ -13,6 +13,7 @@ path = "src/main.rs"
 anyhow = "1.0"
 configamajig = { path = "configamajig" }
 dialoguer = "0.5"
+dirs = "2.0"
 paw = "1.0"
 reqwest = { version = "0.10.0-alpha.2", features = ["blocking"] }
 shared = { path = "shared" }
