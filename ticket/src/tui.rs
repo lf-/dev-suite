@@ -149,6 +149,8 @@ impl Default for Config {
     }
   }
 }
+
+#[allow(clippy::too_many_lines)]
 pub fn run() -> Result<()> {
   let stdout = io::stdout();
   let mut lock = BufWriter::new(stdout.lock());
@@ -255,7 +257,6 @@ pub fn run() -> Result<()> {
       for t in open.chain(closed) {
         save_ticket(&t.0)?;
       }
-      let _ = dbg!(join);
       break;
     }
   }
