@@ -1,2 +1,1 @@
-#! /bin/bash
-git push github --all --force
+#!/usr/bin/env python
