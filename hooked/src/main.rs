@@ -54,7 +54,7 @@ enum Args {
 enum Language {
   /// Use Bash for your git hooks
   Bash,
-  /// Use Python for your git hooks
+  /// Use Python 3 for your git hooks
   Python,
   /// Use Ruby for your git hooks
   Ruby,
@@ -105,7 +105,7 @@ fn init(lang: Language) -> Result<()> {
       }
       match lang {
         Language::Bash => file.write_all(b"#!/usr/bin/env bash")?,
-        Language::Python => file.write_all(b"#!/usr/bin/env python")?,
+        Language::Python => file.write_all(b"#!/usr/bin/env python3")?,
         Language::Ruby => file.write_all(b"#!/usr/bin/env ruby")?,
       }
       debug!("Writing data to file.");

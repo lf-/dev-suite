@@ -63,7 +63,7 @@ fn lang(lang: &str) -> Result<(), Box<dyn Error>> {
       .to_owned();
     match lang {
       "bash" => assert_eq!(shebang, "#!/usr/bin/env bash"),
-      "python" => assert_eq!(shebang, "#!/usr/bin/env python"),
+      "python" => assert_eq!(shebang, "#!/usr/bin/env python3"),
       "ruby" => assert_eq!(shebang, "#!/usr/bin/env ruby"),
       _ => unreachable!(),
     }
