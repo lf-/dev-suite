@@ -8,16 +8,20 @@ use dialoguer::{
   theme::ColorfulTheme,
   Checkboxes,
 };
+#[cfg(target_family = "windows")]
 use dirs::executable_dir;
 use shared::find_root;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::OpenOptionsExt;
 use std::{
   fs::{
     create_dir_all,
     OpenOptions,
   },
   process::Command,
+};
+#[cfg(target_family = "unix")]
+use std::{
+  os::unix::fs::OpenOptionsExt,
+  path::PathBuf,
 };
 use which::which;
 
