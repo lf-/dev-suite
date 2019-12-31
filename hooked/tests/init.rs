@@ -30,13 +30,12 @@ const HOOKS: [&str; 18] = [
   "sendemail-validate",
 ];
 
-#[test]
-fn init() -> Result<(), Box<dyn Error>> {
+fn lang(lang: &str) -> Result<(), Box<dyn Error>> {
   let dir = tempdir()?;
   let _ = Repository::init(&dir)?;
   let mut cmd = Command::cargo_bin("hooked")?;
   env::set_current_dir(&dir)?;
-  let _ = cmd.arg("init").assert().success();
+  let _ = cmd.arg("init").arg(lang).assert().success();
   let git = &dir.path().join(".git").join("hooks");
   let dev = &dir.path().join(".dev-suite").join("hooked");
 
@@ -54,8 +53,35 @@ fn init() -> Result<(), Box<dyn Error>> {
     // numbers essentially, allowing us to test the actual value we wanted to
     // test, and making this test work without special casing it if git ever
     // changes.
+    #[cfg(not(windows))]
     assert_eq!(dev_hook.metadata()?.permissions().mode() & 511, 0o755);
-  }
 
+    let shebang = fs::read_to_string(&dev_hook)?
+      .lines()
+      .nth(0)
+      .ok_or_else(|| "File is empty and has no shebang line")?
+      .to_owned();
+    match lang {
+      "bash" => assert_eq!(shebang, "#!/usr/bin/env bash"),
+      "python" => assert_eq!(shebang, "#!/usr/bin/env python"),
+      "ruby" => assert_eq!(shebang, "#!/usr/bin/env ruby"),
+      _ => unreachable!(),
+    }
+  }
   Ok(())
+}
+
+#[test]
+fn init_bash() -> Result<(), Box<dyn Error>> {
+  lang("bash")
+}
+
+#[test]
+fn init_python() -> Result<(), Box<dyn Error>> {
+  lang("python")
+}
+
+#[test]
+fn init_ruby() -> Result<(), Box<dyn Error>> {
+  lang("ruby")
 }
