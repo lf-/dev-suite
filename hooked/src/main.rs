@@ -81,32 +81,74 @@ fn init(lang: Language) -> Result<()> {
   debug!("git_hooks base path: {}", git_hooks.display());
   let root = root.join(".dev-suite").join("hooked");
   debug!("root base path: {}", root.display());
-  fs::create_dir_all(&root)?;
+  let wrapper_dir = &root.join("wrapper");
+  fs::create_dir_all(&wrapper_dir)?;
 
   for hook in &HOOKS {
-    let path = &root.join(hook);
+    let mut path = (&root).join(hook);
     debug!("dev-suite hook path: {}", path.display());
     let git_hook = &git_hooks.join(hook);
     debug!("git_hook path: {}", git_hook.display());
+    let mut wrapper_hook = (&wrapper_dir).join(hook);
+    let _ = wrapper_hook.set_extension("sh");
+    let _ = match lang {
+      Language::Bash => path.set_extension("sh"),
+      Language::Python => path.set_extension("py"),
+      Language::Ruby => path.set_extension("rb"),
+    };
 
     if path.exists() {
       debug!("git hook {} already exists. Skipping creation.", hook);
     } else {
       debug!("Creating dev-suite hook.");
       let mut file = fs::File::create(&path)?;
+      let mut wrapper = fs::File::create(&wrapper_hook)?;
       trace!("File created.");
-      let mut perms = file.metadata()?.permissions();
       #[cfg(not(windows))]
       {
+        let mut perms = file.metadata()?.permissions();
+        let mut wperms = wrapper.metadata()?.permissions();
         debug!("Setting dev-suite hook to be executable.");
         perms.set_mode(0o755);
+        wperms.set_mode(0o755);
         file.set_permissions(perms)?;
+        wrapper.set_permissions(wperms)?;
         trace!("Permissions were set.");
       }
       match lang {
-        Language::Bash => file.write_all(b"#!/usr/bin/env bash")?,
-        Language::Python => file.write_all(b"#!/usr/bin/env python3")?,
-        Language::Ruby => file.write_all(b"#!/usr/bin/env ruby")?,
+        Language::Bash => {
+          file.write_all(b"#!/usr/bin/env bash")?;
+          wrapper.write_all(
+            format!(
+              "#!C:\\Program Files\\Git\\bin\\sh.exe\n\
+              bash.exe .dev-suite/hooked/{}.sh\n",
+              hook
+            )
+            .as_bytes(),
+          )?;
+        }
+        Language::Python => {
+          file.write_all(b"#!/usr/bin/env python3")?;
+          wrapper.write_all(
+            format!(
+              "#!C:\\Program Files\\Git\\bin\\sh.exe\n\
+              py.exe .dev-suite/hooked/{}.py\n",
+              hook
+            )
+            .as_bytes(),
+          )?;
+        }
+        Language::Ruby => {
+          file.write_all(b"#!/usr/bin/env ruby")?;
+          wrapper.write_all(
+            format!(
+              "#!C:\\Program Files\\Git\\bin\\sh.exe\n\
+              ruby.exe .dev-suite/hooked/{}.rb\n",
+              hook
+            )
+            .as_bytes(),
+          )?;
+        }
       }
       debug!("Writing data to file.");
       debug!("Created git hook {}.", hook);
@@ -130,18 +172,39 @@ fn link() -> Result<()> {
   debug!("root base path: {}", root.display());
 
   for hook in &HOOKS {
-    let path = &root.join(hook);
+    let path = {
+      #[cfg(windows)]
+      let mut path = root.join("wrapper").join(hook);
+      #[cfg(not(windows))]
+      let mut path = root.join(hook);
+
+      let _ = path.set_extension("py");
+      if path.exists() {
+        path
+      } else if {
+        let _ = path.set_extension("rb");
+        path.exists()
+      } {
+        path
+      } else if {
+        let _ = path.set_extension("sh");
+        path.exists()
+      } {
+        path
+      } else {
+        let _ = path.set_extension("");
+        bail!(
+        "The path {} does not exist. Have you initialized the repo to use hooked?",
+        path.display()
+      );
+      }
+    };
     if path.exists() {
       let path = path.canonicalize()?;
       debug!("dev-suite hook path: {}", path.display());
       let git_hook = &git_hooks.join(hook);
       debug!("git_hook path: {}", git_hook.display());
       inner_link(&path, &git_hook, hook)?;
-    } else {
-      bail!(
-        "The path {} does not exist. Have you initialized the repo to use hooked?",
-        path.display()
-      );
     }
   }
 
