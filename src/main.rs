@@ -8,20 +8,17 @@ use dialoguer::{
   theme::ColorfulTheme,
   Checkboxes,
 };
-#[cfg(target_family = "windows")]
-use dirs::executable_dir;
 use shared::find_root;
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::OpenOptionsExt;
+#[cfg(target_os = "macos")]
+use std::path::PathBuf;
 use std::{
   fs::{
     create_dir_all,
     OpenOptions,
   },
   process::Command,
-};
-#[cfg(target_family = "unix")]
-use std::{
-  os::unix::fs::OpenOptionsExt,
-  path::PathBuf,
 };
 use which::which;
 
@@ -165,9 +162,9 @@ fn install() -> Result<()> {
   #[cfg(target_os = "macos")]
   let mut location = PathBuf::from("/usr/local/bin");
   #[cfg(target_os = "linux")]
-  let mut location = executable_dir().unwrap();
+  let mut location = dirs::executable_dir().unwrap();
   #[cfg(target_os = "windows")]
-  let mut location = PathBuf::from(r#"C:\ProgramData\dev-suite"#);
+  let mut location = dirs::data_local_dir().unwrap().join("dev-suite");
 
   let client = reqwest::blocking::Client::new();
   create_dir_all(&location)?;
@@ -190,16 +187,27 @@ fn install() -> Result<()> {
         .mode(0o755)
         .open(&location)?;
       #[cfg(target_family = "windows")]
-      let mut file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .open(&location)?;
-
+      let mut file = {
+        let _ = location.set_extension("exe");
+        OpenOptions::new()
+          .create(true)
+          .write(true)
+          .open(&location)?
+      };
       let _ = program.copy_to(&mut file)?;
       let _ = location.pop();
     }
   }
 
+  // We need to add this to the PATH for the local user
+  #[cfg(target_os = "windows")]
+  {
+    println!("Adding {} to your %PATH%", location.display());
+    let mut location = location.into_os_string();
+    location.push(";%PATH%");
+    let _ = Command::new("setx").arg("PATH").arg(&location).output()?;
+    println!("You'll need to restart your computer for the %PATH% changes to take effect");
+  }
   println!("Installation complete");
 
   Ok(())
