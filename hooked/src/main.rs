@@ -107,12 +107,12 @@ fn init(lang: Language) -> Result<()> {
       #[cfg(not(windows))]
       {
         let mut perms = file.metadata()?.permissions();
-        let mut wperms = wrapper.metadata()?.permissions();
+        let mut wrapper_perms = wrapper.metadata()?.permissions();
         debug!("Setting dev-suite hook to be executable.");
         perms.set_mode(0o755);
-        wperms.set_mode(0o755);
+        wrapper_perms.set_mode(0o755);
         file.set_permissions(perms)?;
-        wrapper.set_permissions(wperms)?;
+        wrapper.set_permissions(wrapper_perms)?;
         trace!("Permissions were set.");
       }
       match lang {
@@ -153,13 +153,23 @@ fn init(lang: Language) -> Result<()> {
       debug!("Writing data to file.");
       debug!("Created git hook {}.", hook);
     }
-    let path = path.canonicalize()?;
-    inner_link(&path, &git_hook, hook)?;
+
+    #[cfg(not(windows))]
+    let link_path = path.canonicalize()?;
+    #[cfg(windows)]
+    let link_path = wrapper_hook.canonicalize()?;
+
+    inner_link(&link_path, &git_hook, hook)?;
   }
   info!(
     "Created and symlinked tickets to .git/hooks from {}.",
     root.display()
   );
+  #[cfg(windows)]
+  {
+    warn!("Make sure to add the hooks into git with 'git add --chmod=+x .dev-suite\\hooked'");
+    warn!("If you don't they won't be set as executable on unix systems");
+  }
 
   Ok(())
 }
@@ -177,35 +187,34 @@ fn link() -> Result<()> {
       let mut path = root.join("wrapper").join(hook);
       #[cfg(not(windows))]
       let mut path = root.join(hook);
+      debug!("PATH: {}", path.display());
 
-      let _ = path.set_extension("py");
-      if path.exists() {
-        path
-      } else if {
-        let _ = path.set_extension("rb");
-        path.exists()
-      } {
-        path
-      } else if {
-        let _ = path.set_extension("sh");
-        path.exists()
-      } {
-        path
+      let mut path_python = path.clone();
+      let _ = path_python.set_extension("py");
+      let mut path_ruby = path.clone();
+      let _ = path_ruby.set_extension("rb");
+      let mut path_bash = path.clone();
+      let _ = path_bash.set_extension("sh");
+
+      if path_python.exists() {
+        path_python
+      } else if path_ruby.exists() {
+        path_ruby
+      } else if path_bash.exists() {
+        path_bash
       } else {
         let _ = path.set_extension("");
         bail!(
-        "The path {} does not exist. Have you initialized the repo to use hooked?",
-        path.display()
-      );
+          "The path {} does not exist. Have you initialized the repo to use hooked?",
+          path.display()
+        );
       }
     };
-    if path.exists() {
-      let path = path.canonicalize()?;
-      debug!("dev-suite hook path: {}", path.display());
-      let git_hook = &git_hooks.join(hook);
-      debug!("git_hook path: {}", git_hook.display());
-      inner_link(&path, &git_hook, hook)?;
-    }
+    let path = path.canonicalize()?;
+    debug!("dev-suite hook path: {}", path.display());
+    let git_hook = &git_hooks.join(hook);
+    debug!("git_hook path: {}", git_hook.display());
+    inner_link(&path, &git_hook, hook)?;
   }
 
   info!("Successfully symlinked all githooks to .git/hooks");
@@ -219,7 +228,11 @@ fn inner_link(path: &Path, git_hook: &Path, hook: &str) -> Result<()> {
     symlink(&path, &git_hook)?;
     #[cfg(windows)]
     symlink_file(&path, &git_hook)?;
-    trace!("Symlinked git hook {} to .dev-suite/hooked/{}.", hook, hook);
+    debug!(
+      "Symlinked git hook {} to {}",
+      git_hook.display(),
+      path.display()
+    );
   }
   Ok(())
 }
