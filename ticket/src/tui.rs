@@ -37,6 +37,7 @@ use std::{
   sync::mpsc::{
     self,
     Receiver,
+    Sender,
   },
   thread,
   time::Duration,
@@ -148,6 +149,8 @@ impl Default for Config {
     }
   }
 }
+
+#[allow(clippy::too_many_lines)]
 pub fn run() -> Result<()> {
   let stdout = io::stdout();
   let mut lock = BufWriter::new(stdout.lock());
@@ -184,17 +187,23 @@ pub fn run() -> Result<()> {
 
   // Spawn event sender thread
   let (tx, rx) = mpsc::channel();
-  let _ = thread::spawn(move || {
+  let (tx_close, rx_close) = mpsc::channel();
+  let _ = thread::spawn(move || -> Result<()> {
     loop {
       // poll for tick rate duration, if no events, sent tick event.
-      if event::poll(Duration::from_millis(250)).unwrap() {
-        if let CEvent::Key(key) = event::read().unwrap() {
-          tx.send(Event::Input(key)).unwrap();
+      if event::poll(Duration::from_millis(250))? {
+        if let CEvent::Key(key) = event::read()? {
+          tx.send(Event::Input(key))?;
         }
       }
 
-      tx.send(Event::Tick).unwrap();
+      if rx_close.try_recv().unwrap_or(false) {
+        break;
+      }
+
+      tx.send(Event::Tick)?;
     }
+    Ok(())
   });
 
   // Cached Values
@@ -240,7 +249,7 @@ pub fn run() -> Result<()> {
       App::instructions(&mut f, vertical[3]);
     })?;
 
-    handle_event(&rx, &mut app, &user_config, &status)?;
+    handle_event(&rx, &tx_close, &mut app, &user_config, &status)?;
 
     if app.should_quit {
       let open = app.tickets.tickets["Open"].iter();
@@ -266,6 +275,7 @@ pub fn run() -> Result<()> {
 
 fn handle_event(
   rx: &Receiver<Event<KeyEvent>>,
+  tx: &Sender<bool>,
   app: &mut App,
   user_config: &UserConfig,
   status: &str,
@@ -274,6 +284,7 @@ fn handle_event(
     Event::Input(event) => match event.code {
       KeyCode::Esc => {
         app.should_quit = true;
+        tx.send(true)?;
       }
       KeyCode::Right => {
         if app.tabs.index == 0 {
