@@ -15,7 +15,7 @@ configamajig = { path = "configamajig" }
 dialoguer = "0.5"
 dirs = "2.0"
 paw = "1.0"
-reqwest = { version = "0.10.0-alpha.2", features = ["blocking"] }
+reqwest = { version = "0.10.0", features = ["blocking"] }
 shared = { path = "shared" }
 structopt = { version = "0.3", features = ["paw"] }
 which = "3.1"
@@ -27,3 +27,14 @@ members = [
   "ticket",
   "hooked",
 ]
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'unwind'
+incremental = false
+overflow-checks = false
