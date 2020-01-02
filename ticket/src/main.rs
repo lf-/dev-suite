@@ -103,6 +103,7 @@ fn init() -> Result<()> {
   debug!("Creating closed ticket directory");
   fs::create_dir_all(&closed_tickets()?)?;
   trace!("Done initializing tickets.");
+  info!("Initialized repo to use ticket");
   Ok(())
 }
 

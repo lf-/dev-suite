@@ -7,6 +7,7 @@ use configamajig::*;
 use dialoguer::{
   theme::ColorfulTheme,
   Checkboxes,
+  Select,
 };
 use shared::find_root;
 #[cfg(target_family = "unix")]
@@ -125,7 +126,22 @@ fn init() -> Result<()> {
             .map_err(|_| format_err!(
               "It looks like hooked is not on your $PATH. Did you run 'ds install'?"
             ))?;
-          let _ = Command::new("hooked").arg("init").spawn()?.wait()?;
+
+          let langs = &["Python", "Ruby", "Bash"];
+          let mut lang_choice =
+            langs[Select::with_theme(&ColorfulTheme::default())
+              .with_prompt(
+                "Which language do you wish to use for your git hooks?",
+              )
+              .items(langs)
+              .interact()?]
+            .to_string();
+          lang_choice.make_ascii_lowercase();
+          let _ = Command::new("hooked")
+            .arg("init")
+            .arg(&lang_choice)
+            .spawn()?
+            .wait()?;
         }
         Tools::Ticket => {
           which("ticket")
