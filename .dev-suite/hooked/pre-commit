@@ -1,7 +1,0 @@
-#! /bin/bash
-set -eu -o pipefail
-
-cargo build --all
-cargo test --all
-rustup run nightly cargo fmt --all -- --check
-cargo clippy --all --all-targets -- -W clippy::pedantic

@@ -1,4 +1,0 @@
-#! /bin/bash
-
-# Check that the commit message is up to spec
-hooked-commit-msg $@
