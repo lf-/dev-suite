@@ -9,15 +9,23 @@ use dialoguer::{
   Checkboxes,
 };
 use shared::find_root;
-use std::process::Command;
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::OpenOptionsExt;
+#[cfg(target_os = "macos")]
+use std::path::PathBuf;
+use std::{
+  fs::{
+    create_dir_all,
+    OpenOptions,
+  },
+  process::Command,
+};
 use which::which;
 
 #[derive(structopt::StructOpt)]
 enum Args {
   /// Download and install all of dev-suite
   Install,
-  /// Update all of dev-suite
-  Update,
   /// Initialize the repo to use dev-suite and it's tools
   Init,
   /// Commands for configuration of dev-suite
@@ -60,8 +68,7 @@ enum Add {
 fn main(args: Args) {
   if let Err(e) = match args {
     Args::Init => init(),
-    Args::Update => unimplemented!(),
-    Args::Install => unimplemented!(),
+    Args::Install => install(),
     Args::Config(conf) => match conf {
       Config::User(user) => match user {
         User::Init { name } => create_user_config(name),
@@ -138,4 +145,70 @@ fn init() -> Result<()> {
 enum Tools {
   Hooked,
   Ticket,
+}
+
+/// Install all of dev-suite
+fn install() -> Result<()> {
+  static BASE_URL: &str =
+    "https://dev-suite-spaces.nyc3.digitaloceanspaces.com/";
+
+  #[cfg(target_os = "macos")]
+  static TOOLS: [&str; 2] = ["hooked_osx", "ticket_osx"];
+  #[cfg(target_os = "linux")]
+  static TOOLS: [&str; 2] = ["hooked_linux", "ticket_linux"];
+  #[cfg(target_os = "windows")]
+  static TOOLS: [&str; 2] = ["hooked_windows", "ticket_windows"];
+
+  #[cfg(target_os = "macos")]
+  let mut location = PathBuf::from("/usr/local/bin");
+  #[cfg(target_os = "linux")]
+  let mut location = dirs::executable_dir().unwrap();
+  #[cfg(target_os = "windows")]
+  let mut location = dirs::data_local_dir().unwrap().join("dev-suite");
+
+  let client = reqwest::blocking::Client::new();
+  create_dir_all(&location)?;
+
+  for tool in &TOOLS {
+    let tool_name = tool.split('_').nth(0).unwrap();
+    location.push(tool_name);
+    if location.exists() {
+      println!("{} already exists, skipping", tool_name);
+      let _ = location.pop();
+    } else {
+      println!("Installing {}", tool_name);
+      let url = BASE_URL.to_owned() + tool;
+      let mut program = client.get(&url).send()?;
+
+      #[cfg(target_family = "unix")]
+      let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .mode(0o755)
+        .open(&location)?;
+      #[cfg(target_family = "windows")]
+      let mut file = {
+        let _ = location.set_extension("exe");
+        OpenOptions::new()
+          .create(true)
+          .write(true)
+          .open(&location)?
+      };
+      let _ = program.copy_to(&mut file)?;
+      let _ = location.pop();
+    }
+  }
+
+  // We need to add this to the PATH for the local user
+  #[cfg(target_os = "windows")]
+  {
+    println!("Adding {} to your %PATH%", location.display());
+    let mut location = location.into_os_string();
+    location.push(";%PATH%");
+    let _ = Command::new("setx").arg("PATH").arg(&location).output()?;
+    println!("You'll need to restart your computer for the %PATH% changes to take effect");
+  }
+  println!("Installation complete");
+
+  Ok(())
 }

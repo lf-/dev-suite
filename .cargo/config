@@ -57,3 +57,7 @@ rustflags = [
   "-D",
   "while-true"
 ]
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-Ctarget-feature=+crt-static"]
+[target.i686-pc-windows-msvc]
+rustflags = ["-Ctarget-feature=+crt-static"]
