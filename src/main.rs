@@ -149,15 +149,17 @@ enum Tools {
 
 /// Install all of dev-suite
 fn install() -> Result<()> {
-  static BASE_URL: &str =
-    "https://dev-suite-spaces.nyc3.digitaloceanspaces.com/";
-
   #[cfg(target_os = "macos")]
-  static TOOLS: [&str; 2] = ["hooked_osx", "ticket_osx"];
+  static BASE_URL: &str =
+    "https://dev-suite-spaces.nyc3.digitaloceanspaces.com/osx/";
   #[cfg(target_os = "linux")]
-  static TOOLS: [&str; 2] = ["hooked_linux", "ticket_linux"];
+  static BASE_URL: &str =
+    "https://dev-suite-spaces.nyc3.digitaloceanspaces.com/linux/";
   #[cfg(target_os = "windows")]
-  static TOOLS: [&str; 2] = ["hooked_windows", "ticket_windows"];
+  static BASE_URL: &str =
+    "https://dev-suite-spaces.nyc3.digitaloceanspaces.com/windows/";
+
+  static TOOLS: [&str; 2] = ["hooked", "ticket"];
 
   #[cfg(target_os = "macos")]
   let mut location = PathBuf::from("/usr/local/bin");
@@ -170,13 +172,12 @@ fn install() -> Result<()> {
   create_dir_all(&location)?;
 
   for tool in &TOOLS {
-    let tool_name = tool.split('_').nth(0).unwrap();
-    location.push(tool_name);
+    location.push(tool);
     if location.exists() {
-      println!("{} already exists, skipping", tool_name);
+      println!("{} already exists, skipping", tool);
       let _ = location.pop();
     } else {
-      println!("Installing {}", tool_name);
+      println!("Installing {}", tool);
       let url = BASE_URL.to_owned() + tool;
       let mut program = client.get(&url).send()?;
 

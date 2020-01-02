@@ -121,7 +121,7 @@ fn init(lang: Language) -> Result<()> {
           wrapper.write_all(
             format!(
               "#!C:\\Program Files\\Git\\bin\\sh.exe\n\
-              bash.exe .dev-suite/hooked/{}.sh\n",
+               bash.exe .dev-suite/hooked/{}.sh\n",
               hook
             )
             .as_bytes(),
@@ -132,7 +132,7 @@ fn init(lang: Language) -> Result<()> {
           wrapper.write_all(
             format!(
               "#!C:\\Program Files\\Git\\bin\\sh.exe\n\
-              py.exe .dev-suite/hooked/{}.py\n",
+               py.exe .dev-suite/hooked/{}.py\n",
               hook
             )
             .as_bytes(),
@@ -143,7 +143,7 @@ fn init(lang: Language) -> Result<()> {
           wrapper.write_all(
             format!(
               "#!C:\\Program Files\\Git\\bin\\sh.exe\n\
-              ruby.exe .dev-suite/hooked/{}.rb\n",
+               ruby.exe .dev-suite/hooked/{}.rb\n",
               hook
             )
             .as_bytes(),
