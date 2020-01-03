@@ -1,0 +1,17 @@
+title = 'Having no tickets causes the TUI to crash'
+status = 'Open'
+id = '4c37e800-2e38-11ea-b6e0-32f54a3ad7cd'
+assignees = [[
+    '64c00ccc-761e-4484-86ac-904e461bb300',
+    'Michael Gattozzi',
+]]
+description = '''
+Due to how the ticket tui uses indexing to avoid bounds checks this causes an
+issue when you're, well, out of bounds. This was handled properly for when we
+have n > 0 elements in the open or closed ticket arrays. An empty state for
+when there are no tickets and a check for an empty collection need to be
+created so that the indexing will be avoided and cause a crash.
+'''
+version = 'V1'
+
+[comments]
