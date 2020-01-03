@@ -1,0 +1,17 @@
+title = 'Build out cross platform testing'
+status = 'Open'
+id = 'd5501e80-2e3a-11ea-80dd-b858bdaef29a'
+assignees = [[
+    '64c00ccc-761e-4484-86ac-904e461bb300',
+    'Michael Gattozzi',
+]]
+description = '''
+The tests currently in the repo are scarce at best, and manually testing them
+can only go so far. Creating a more comprehensive test suite that can run on
+all three platforms would be great, maybe through docker, but at the very
+least it needs to be expanded more so than it currently is, and to have tests
+for bugs already found so as not to regress.
+'''
+version = 'V1'
+
+[comments]
