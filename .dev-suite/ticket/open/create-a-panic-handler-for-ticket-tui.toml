@@ -1,0 +1,17 @@
+title = 'Create a panic handler for ticket tui'
+status = 'Open'
+id = '9b344c00-2e3d-11ea-bc2d-b4e1317c6ecc'
+assignees = [[
+    '64c00ccc-761e-4484-86ac-904e461bb300',
+    'Michael Gattozzi',
+]]
+description = '''
+When the ticket tui has a panic it garbles up the terminal and leaves it in an
+awful state. This is because it never sets the terminal back to it's previous
+state like it can when it fails gracefully. When the tui is run it should have
+a custom panic handler to reset the terminal to it's proper state, then continue
+with it's normal unwinding behavior.
+'''
+version = 'V1'
+
+[comments]
