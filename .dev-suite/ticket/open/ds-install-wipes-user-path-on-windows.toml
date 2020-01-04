@@ -1,0 +1,24 @@
+title = 'ds install wipes user PATH on Windows'
+status = 'Open'
+id = 'a2448280-2f41-11ea-b9b7-55d06c658ffe'
+assignees = []
+description = '''
+Currently on Windows, `ds install` calls the following command to add the folder
+containing downloaded dev-suite binaries to the PATH:
+
+```
+setx PATH <dev-suite location>;%PATH%
+```
+
+However this isn't called inside a shell, so variable expansion isn't performed,
+and the PATH the user had previously set is lost into oblivion.
+
+A simple fix is to call this instead:
+
+```
+cmd /C "setx PATH <dev-suite location>;%PATH%"
+```
+'''
+version = 'V1'
+
+[comments]
