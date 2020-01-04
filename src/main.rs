@@ -220,9 +220,10 @@ fn install() -> Result<()> {
   #[cfg(target_os = "windows")]
   {
     println!("Adding {} to your %PATH%", location.display());
-    let mut location = location.into_os_string();
-    location.push(";%PATH%");
-    let _ = Command::new("setx").arg("PATH").arg(&location).output()?;
+    let mut command = std::ffi::OsStr::new("setx PATH ").to_os_string();
+    command.push(location.into_os_string());
+    command.push(";%PATH%");
+    let _ = Command::new("cmd").arg("/C").arg(command).output()?;
     println!("You'll need to restart your computer for the %PATH% changes to take effect");
   }
   println!("Installation complete");
