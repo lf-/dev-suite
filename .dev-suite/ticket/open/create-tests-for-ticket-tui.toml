@@ -1,0 +1,17 @@
+title = 'Create tests for ticket tui'
+status = 'Open'
+id = '778a2500-303a-11ea-ac62-272410abeec7'
+assignees = []
+description = '''
+One of the issues with the ticket tui is that it's hard to test. We need to
+find out some way to be able to test it to avoid regressions from the fix for
+ticket:
+
+4c37e800-2e38-11ea-b6e0-32f54a3ad7cd 'Having no tickets causes the TUI to crash'
+
+Not just that but as we add more TUIs overtime we need to make sure we don't
+have any kind of regressions, but it's not exactly clear on how to proceed here.
+'''
+version = 'V1'
+
+[comments]
