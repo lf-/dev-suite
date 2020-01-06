@@ -86,11 +86,13 @@ impl<'a> TabsState<'a> {
   }
 
   pub fn next(&mut self) {
-    self.index = (self.index + 1) % self.titles.len()
+    if !self.titles.is_empty() {
+      self.index = (self.index + 1) % self.titles.len()
+    }
   }
 
   pub fn previous(&mut self) {
-    if self.index > 0 {
+    if self.index > 0 && !self.titles.is_empty() {
       self.index = (self.index - 1) % self.titles.len()
     }
   }
@@ -123,11 +125,13 @@ impl TicketState {
   }
 
   pub fn next(&mut self) {
-    self.index = (self.index + 1) % self.len()
+    if self.len() > 0 {
+      self.index = (self.index + 1) % self.len()
+    }
   }
 
   pub fn previous(&mut self) {
-    if self.index > 0 {
+    if self.index > 0 && self.len() > 0 {
       self.index = (self.index - 1) % self.len()
     }
   }
@@ -331,28 +335,35 @@ fn handle_event(
       KeyCode::Up => app.tickets.previous(),
       KeyCode::Down => app.tickets.next(),
       KeyCode::Backspace => {
-        let _ = app.tickets.tickets.get_mut(status).unwrap()[app.tickets.index]
-          .1
-          .pop();
+        if app.tickets.len() > 0 {
+          let _ = app.tickets.tickets.get_mut(status).unwrap()
+            [app.tickets.index]
+            .1
+            .pop();
+        }
       }
       KeyCode::Char(c) => {
-        app.tickets.tickets.get_mut(status).unwrap()[app.tickets.index]
-          .1
-          .push(c);
+        if app.tickets.len() > 0 {
+          app.tickets.tickets.get_mut(status).unwrap()[app.tickets.index]
+            .1
+            .push(c);
+        }
       }
       KeyCode::Enter => {
-        let ticket =
-          &mut app.tickets.tickets.get_mut(status).unwrap()[app.tickets.index];
-        if !ticket.1.is_empty() {
-          let _ = ticket.0.comments.insert(
-            uuid_v1()?,
-            (
-              user_config.uuid,
-              Name(user_config.name.clone()),
-              Comment(ticket.1.clone()),
-            ),
-          );
-          ticket.1.clear();
+        if app.tickets.len() > 0 {
+          let ticket = &mut app.tickets.tickets.get_mut(status).unwrap()
+            [app.tickets.index];
+          if !ticket.1.is_empty() {
+            let _ = ticket.0.comments.insert(
+              uuid_v1()?,
+              (
+                user_config.uuid,
+                Name(user_config.name.clone()),
+                Comment(ticket.1.clone()),
+              ),
+            );
+            ticket.1.clear();
+          }
         }
       }
       _ => {}
@@ -450,9 +461,12 @@ impl<'a> App<'a> {
 
   #[inline]
   fn comment(&self, tab: &'a str, f: &mut Frame<impl Backend>, rect: Rect) {
-    let (_, s) = &self.tickets.tickets.get(tab).unwrap()[self.tickets.index];
+    let tickets = self.tickets.tickets.get(tab).unwrap();
     let mut text = String::from("> ");
-    text.push_str(&s);
+    if !tickets.is_empty() {
+      let (_, s) = &tickets[self.tickets.index];
+      text.push_str(&s);
+    }
 
     Paragraph::new([Text::raw(text)].iter())
       .block(Block::default().borders(Borders::ALL).title("Comment"))
