@@ -16,6 +16,7 @@ use configamajig::{
   UserConfig,
 };
 use crossterm::{
+  cursor,
   event::{
     self,
     DisableMouseCapture,
@@ -34,6 +35,7 @@ use std::{
     BufWriter,
     Write,
   },
+  panic,
   sync::mpsc::{
     self,
     Receiver,
@@ -160,6 +162,32 @@ pub fn run() -> Result<()> {
   let mut terminal = Terminal::new(CrosstermBackend::new(lock))?;
   terminal.backend_mut().hide_cursor()?;
   terminal.clear()?;
+
+  // Setup panic handler so that screen gets reset properly
+  let old_hook = panic::take_hook();
+  panic::set_hook(Box::new(move |panic_info| {
+    // Clean up terminal
+    queue!(
+      io::stdout().lock(),
+      LeaveAlternateScreen,
+      DisableMouseCapture,
+      cursor::Show
+    )
+    .unwrap();
+    disable_raw_mode().unwrap();
+    // Load bearing println's without them the actual panic from the old hook
+    // Isn't flushed to the terminal
+    if let Some(location) = panic_info.location() {
+      println!(
+        "Panic occurred in file '{}' at line {}",
+        location.file(),
+        location.line()
+      );
+    } else {
+      println!("Panic occurred but can't get location information...");
+    }
+    old_hook(panic_info);
+  }));
 
   // App
   let mut app = App {
